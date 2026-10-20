@@ -218,42 +218,149 @@ class _AppHomeState extends State<AppHome> {
       ]),
     ),
   );
+  // Landing experience inspired by the Jawlah website's photographic hero.
   Widget _header()=>Container(
-    margin:const EdgeInsets.all(16),padding:const EdgeInsets.all(24),
+    height:445,
+    margin:const EdgeInsets.fromLTRB(16,12,16,12),
+    clipBehavior:Clip.antiAlias,
     decoration:BoxDecoration(
-      gradient:const LinearGradient(colors:[pine,Color(0xFF122D29)]),
-      borderRadius:BorderRadius.circular(20)),
-    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      const Text('جولة العقارية',style:TextStyle(color:Color(0xFFEACBA9),fontSize:16)),
-      const SizedBox(height:10),
-      const Text('بيتك القادم\nيبدأ بجولة.',
-        style:TextStyle(color:Colors.white,fontSize:36,
-          fontWeight:FontWeight.bold,height:1.3)),
-      const SizedBox(height:8),
-      const Text('اختيارات عقارية تناسب حياتك',style:TextStyle(color:Colors.white70)),
-      const SizedBox(height:22),
-      FilledButton.icon(
-        style:FilledButton.styleFrom(backgroundColor:const Color(0xFFF1DAC0),
-          foregroundColor:pine),
-        onPressed:()=>setState(()=>tab=1),
-        icon:const Icon(Icons.arrow_back),label:const Text('اكتشف المشاريع')),
-    ])
+      borderRadius:BorderRadius.circular(24),
+      color:pine,
+      boxShadow:const [BoxShadow(color:Color(0x220F352F),
+        blurRadius:22,offset:Offset(0,9))],
+    ),
+    child:Stack(fit:StackFit.expand,children:[
+      Image.network(
+        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=85',
+        fit:BoxFit.cover,
+        errorBuilder:(_,__,___)=>const ColoredBox(
+          color:pine,child:Center(child:Icon(Icons.home_work_outlined,
+            size:92,color:Color(0x66FFFFFF)))),
+      ),
+      const DecoratedBox(decoration:BoxDecoration(
+        gradient:LinearGradient(begin:Alignment.topCenter,
+          end:Alignment.bottomCenter,
+          colors:[Color(0x50102C2B),Color(0x96102C2B),Color(0xF7102C2B)],
+          stops:[0,0.48,1]),
+      )),
+      Padding(padding:const EdgeInsets.fromLTRB(23,21,23,26),
+        child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Container(
+            padding:const EdgeInsets.symmetric(horizontal:13,vertical:9),
+            decoration:BoxDecoration(color:const Color(0x88102C2B),
+              border:Border.all(color:const Color(0x77EAD6B6)),
+              borderRadius:BorderRadius.circular(30)),
+            child:const Row(mainAxisSize:MainAxisSize.min,children:[
+              Icon(Icons.diamond_outlined,color:Color(0xFFEAD1A9),size:17),
+              SizedBox(width:7),
+              Text('جولة العقارية  |  JAWLAH',
+                style:TextStyle(color:Colors.white,fontSize:12,
+                  fontWeight:FontWeight.bold)),
+            ]),
+          ),
+          const Spacer(),
+          const Text('اختيارات تصنع الفرق',
+            style:TextStyle(fontSize:14,color:Color(0xFFE9CBAC),
+              fontWeight:FontWeight.w700)),
+          const SizedBox(height:10),
+          const Text('بيتك مش مجرد مكان.\nدي بداية حكاية.',
+            style:TextStyle(color:Colors.white,fontSize:32,
+              fontWeight:FontWeight.bold,height:1.38)),
+          const SizedBox(height:11),
+          const Text('فلل، شقق وأراضٍ بمساحات متنوعة.\nابدأ جولتك واكتشف اللي يناسبك.',
+            style:TextStyle(color:Color(0xFFF1EDE5),
+              fontSize:13,height:1.7)),
+          const SizedBox(height:23),
+          Row(children:[
+            Expanded(child:FilledButton.icon(
+              style:FilledButton.styleFrom(
+                backgroundColor:const Color(0xFFEACBA9),
+                foregroundColor:const Color(0xFF173B39),
+                padding:const EdgeInsets.symmetric(vertical:13)),
+              onPressed:()=>setState(()=>tab=1),
+              icon:const Icon(Icons.arrow_back),
+              label:const Text('اكتشف المشاريع',
+                style:TextStyle(fontWeight:FontWeight.bold)),
+            )),
+            const SizedBox(width:9),
+            OutlinedButton(
+              style:OutlinedButton.styleFrom(
+                foregroundColor:Colors.white,
+                side:const BorderSide(color:Color(0xFFE3D8C3)),
+                padding:const EdgeInsets.symmetric(
+                  horizontal:14,vertical:14)),
+              onPressed:()=>openLink('https://wa.me/966567607764'),
+              child:const Text('تواصل معنا'),
+            ),
+          ]),
+        ]),
+      ),
+    ]),
+  );
+  Widget _category(String name,IconData icon)=>ActionChip(
+    avatar:Icon(icon,color:pine,size:19),
+    label:Text(name,style:const TextStyle(color:pine,fontWeight:FontWeight.w600)),
+    backgroundColor:Colors.white,
+    side:const BorderSide(color:Color(0xFFDCE5DC)),
+    onPressed:(){
+      search.clear();
+      setState((){
+        city='الكل';
+        type=name;
+        tab=1;
+      });
+    },
   );
   Widget _home()=>RefreshIndicator(onRefresh:_fetch,child:ListView(children:[
     _header(),
     if(demo)_notice(),
-    const Padding(padding:EdgeInsets.fromLTRB(16,18,16,14),
-      child:Text('اكتشف بيتك',style:TextStyle(fontSize:23,
-        fontWeight:FontWeight.bold,color:pine))),
+    const Padding(padding:EdgeInsets.fromLTRB(16,17,16,10),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text('اعثر على المساحة اللي تشبهك',
+          style:TextStyle(fontSize:22,fontWeight:FontWeight.bold,color:pine)),
+        SizedBox(height:4),
+        Text('اختار نوع العقار وابدأ استكشاف المشاريع',
+          style:TextStyle(color:Colors.black54,fontSize:13)),
+      ])),
+    Padding(padding:const EdgeInsets.symmetric(horizontal:16),
+      child:Wrap(spacing:8,runSpacing:5,children:[
+        _category('فيلا',Icons.villa_outlined),
+        _category('شقة',Icons.apartment_outlined),
+        _category('أرض',Icons.landscape_outlined),
+      ])),
+    const Padding(padding:EdgeInsets.fromLTRB(16,25,16,11),
+      child:Text('ابحث عن عقارك',
+        style:TextStyle(fontSize:20,fontWeight:FontWeight.bold,color:pine))),
     _filters(),
-    Padding(padding:const EdgeInsets.fromLTRB(16,20,16,12),
+    Padding(padding:const EdgeInsets.fromLTRB(16,23,16,13),
       child:Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-        const Text('مشاريع مختارة',style:TextStyle(fontSize:21,fontWeight:FontWeight.bold)),
-        TextButton(onPressed:()=>setState(()=>tab=1),child:const Text('عرض الكل'))
+        const Expanded(child:Text('مشاريع تستحق الاستكشاف',
+          style:TextStyle(fontSize:20,fontWeight:FontWeight.bold,color:pine))),
+        TextButton(onPressed:()=>setState(()=>tab=1),
+          child:const Text('عرض الكل')),
       ])),
     ...matching.take(4).map(_card),
     if(matching.isEmpty)const Padding(padding:EdgeInsets.all(24),
       child:Center(child:Text('لا توجد نتائج مطابقة'))),
+    Container(margin:const EdgeInsets.fromLTRB(16,5,16,28),
+      padding:const EdgeInsets.all(20),
+      decoration:BoxDecoration(
+        color:const Color(0xFFE8E6D8),
+        borderRadius:BorderRadius.circular(19)),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('محتاج مساعدة في الاختيار؟',
+          style:TextStyle(color:pine,fontSize:20,
+            fontWeight:FontWeight.bold)),
+        const SizedBox(height:6),
+        const Text('تواصل مع فريق جولة للاستفسار عن المشاريع.',
+          style:TextStyle(color:Color(0xFF4A6359))),
+        const SizedBox(height:15),
+        FilledButton.icon(
+          onPressed:()=>openLink('https://wa.me/966567607764'),
+          icon:const Icon(Icons.chat_bubble_outline),
+          label:const Text('تواصل عبر واتساب')),
+      ]),
+    ),
   ]));
   Widget _list({bool onlyFav=false}) {
     final items=onlyFav
