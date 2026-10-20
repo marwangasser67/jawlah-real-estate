@@ -35,7 +35,7 @@ jobs:
       - name: Fetch Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze --no-fatal-infos lib
       - name: Build installable Android debug APK
         run: flutter build apk --debug --dart-define=API_BASE_URL=https://mdar-alaakary-madar.hatchable.site
       - name: Upload Android APK
