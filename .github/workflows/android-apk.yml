@@ -1,0 +1,46 @@
+name: Build Jawlah Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Flutter Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out app source
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android native project
+        run: flutter create --platforms android --project-name jawlah_real_estate --org sa.jawlah .
+      - name: Fetch Flutter dependencies
+        run: flutter pub get
+      - name: Analyze Dart source
+        run: flutter analyze --no-fatal-infos
+      - name: Build installable Android debug APK
+        run: flutter build apk --debug --dart-define=API_BASE_URL=https://mdar-alaakary-madar.hatchable.site
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jawlah-android-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
