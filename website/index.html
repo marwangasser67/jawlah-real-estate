@@ -11,15 +11,15 @@
   <main class="page" id="login-screen">
     <img class="villa" src="assets/villa-malka-v3.webp" alt="واجهة فيلا سعودية فاخرة مع حديقة ومسبح">
     <section class="login-card" aria-labelledby="login-title">
-      <img class="brand" src="assets/jawlah-logo.png" alt="جولة العقارية — JAWLAH">
+      <img class="brand" id="login-logo" src="assets/jawlah-logo.png" alt="جولة العقارية — JAWLAH">
       <h1 id="login-title">أهلاً بك من جديد</h1>
-      <p class="subtitle">سجّل الدخول إلى حسابك</p>
+      <p class="subtitle" id="login-subtitle">سجّل الدخول إلى حسابك</p>
       <form id="login-form">
         <div class="field">
-          <label for="identity">البريد الإلكتروني أو رقم الجوال</label>
+          <label for="identity">البريد الإلكتروني</label>
           <div class="input-wrap">
             <svg class="icon start" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c.5-3.3 3.1-5.2 7-5.2s6.5 1.9 7 5.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <input class="email-input" id="identity" name="identity" type="text" autocomplete="username" placeholder="example@jawlah.sa" required>
+            <input class="email-input" id="identity" name="identity" type="email" autocomplete="username" placeholder="example@jawlah.sa" required>
           </div>
         </div>
         <div class="field">
@@ -40,7 +40,8 @@
         </button>
       </form>
       <hr class="divider">
-      <p class="signup">ليس لديك حساب؟ <a href="#signup">إنشاء حساب جديد</a></p>
+      <p class="signup"><span id="signup-copy">ليس لديك حساب؟</span> <a href="#signup" id="signup-toggle">إنشاء حساب جديد</a></p>
+      <p class="auth-security-note">بيانات الدخول محمية. يظهر البريد الإلكتروني في لوحة الإدارة، ولا تظهر كلمة المرور لأي مدير.</p>
     </section>
   </main>
   <main class="app-screen" id="app-screen">
@@ -52,6 +53,7 @@
         <button class="nav-link" data-nav-type="شقة">الشقق</button>
         <button class="nav-link" data-nav-type="فيلا">الفلل</button>
         <button class="nav-link" data-nav-type="أرض">الأراضي</button>
+        <span id="custom-nav-links" class="custom-nav-links"></span>
         <button class="nav-link" data-contact>تواصل معنا</button>
       </nav>
       <span class="account-mark">جولة العقارية</span>
@@ -118,8 +120,14 @@
       <button type="button" class="mobile-tab" data-nav-type="أرض" aria-label="الأراضي">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19 5 6l14-2 2 15zM3 19h18M8 6l1 13m5-14 1 14"/></svg><span>الأراضي</span>
       </button>
+      <button type="button" class="mobile-tab" data-contact aria-label="تواصل معنا">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"/></svg><span>تواصل</span>
+      </button>
     </nav>
   </main>
+  <dialog id="contact-dialog" class="contact-dialog" aria-labelledby="contact-title">
+    <div class="contact-dialog-inner"><button type="button" class="contact-close" id="contact-close" aria-label="إغلاق">×</button><span class="eyebrow">جولة العقارية</span><h2 id="contact-title">تواصل معنا</h2><div id="contact-links" class="contact-links"></div></div>
+  </dialog>
   <div class="notice" id="notice" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
