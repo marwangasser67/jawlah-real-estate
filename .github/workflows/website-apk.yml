@@ -42,18 +42,18 @@ jobs:
           src = src.replace('android:label="jawlah_real_estate"', 'android:label="جولة العقارية"')
           if '<uses-permission android:name="android.permission.INTERNET"' not in src:
               src = src.replace('<application',
-                  '<uses-permission android:name="android.permission.INTERNET" />\\n    <application', 1)
+                  '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
           manifest.write_text(src)
 
           gradle = Path('android/app/build.gradle.kts')
           if gradle.exists():
               text = gradle.read_text()
-              text, count = re.subn(r'applicationId\\s*=\\s*"[^"]+"',
+              text, count = re.subn(r'applicationId\s*=\s*"[^"]+"',
                   'applicationId = "sa.jawlah.website"', text)
           else:
               gradle = Path('android/app/build.gradle')
               text = gradle.read_text()
-              text, count = re.subn(r'applicationId\\s+["\\'][^"\\']+["\\']',
+              text, count = re.subn(r'applicationId\s+"[^"]+"',
                   'applicationId "sa.jawlah.website"', text)
           assert count == 1, 'Could not set the website app package id'
           gradle.write_text(text)
