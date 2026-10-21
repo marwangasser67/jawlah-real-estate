@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'luxury_shell.dart';
 
 // Jawlah Luxury UI — demo properties are illustrative, not real sale offers.
 // To enable authentication, provide public Supabase URL/anon key at build time.
@@ -209,11 +210,24 @@ class _AuthGateState extends State<AuthGate> {
         return const Scaffold(body: Center(child: CircularProgressIndicator(color: kGold)));
       }
       final value = snapshot.data;
-      if (value != null && value.isNotEmpty) return JawlahShell(username: value);
+      if (value != null && value.isNotEmpty) return buildLuxuryHome(username: value);
       return const WelcomePage();
     },
   );
 }
+
+Widget buildLuxuryHome({String? username}) => LuxuryShell(
+  username: username,
+  onLogin: (ctx) {
+    Navigator.push(ctx, MaterialPageRoute(builder: (_) => const PhonePage()));
+  },
+  onLogout: (ctx) async {
+    await AuthApi.logout();
+    if (!ctx.mounted) return;
+    Navigator.pushAndRemoveUntil(
+      ctx, MaterialPageRoute(builder: (_) => const WelcomePage()), (_) => false);
+  },
+);
 
 Widget goldButton(String text, VoidCallback? onTap, {IconData? icon}) =>
   SizedBox(width: double.infinity, height: 56,
@@ -286,7 +300,7 @@ class WelcomePage extends StatelessWidget {
             textAlign: TextAlign.center),
           const SizedBox(height: 35),
           goldButton('ابدأ الآن', () => Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const JawlahShell())),
+            context, MaterialPageRoute(builder: (_) => buildLuxuryHome())),
             icon: Icons.arrow_back),
           const SizedBox(height: 15),
           TextButton(onPressed: () => Navigator.push(context,
@@ -342,7 +356,7 @@ class _PhonePageState extends State<PhonePage> {
         busy ? null : send),
       const SizedBox(height: 15),
       outlineButton('تصفّح كزائر', () => Navigator.pushAndRemoveUntil(context,
-        MaterialPageRoute(builder: (_) => const JawlahShell()), (_) => false),
+        MaterialPageRoute(builder: (_) => buildLuxuryHome()), (_) => false),
         icon: Icons.visibility_outlined),
       const SizedBox(height: 13),
       if (!AuthApi.configured) const Text('لإرسال رسائل فعلية يجب تفعيل Supabase Phone Auth ومزود SMS. حالياً يمكن التصفح كزائر.',
@@ -378,7 +392,7 @@ class _VerifyPageState extends State<VerifyPage> {
       await AuthApi.verifyPhone(widget.phone, pin.text.trim());
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(
-        builder: (_) => JawlahShell(username: widget.phone)), (_) => false);
+        builder: (_) => buildLuxuryHome(username: widget.phone)), (_) => false);
     } catch (e) {
       if (mounted) message(context, e.toString().replaceFirst('Exception: ', ''));
     } finally { if (mounted) setState(() => busy = false); }
