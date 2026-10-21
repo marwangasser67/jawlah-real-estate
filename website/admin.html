@@ -10,10 +10,12 @@
 <body>
   <main class="admin-shell">
     <aside class="sidebar">
-      <a class="brand" href="index.html" aria-label="العودة لموقع جولة"><img src="assets/jawlah-logo.png" alt="جولة العقارية"></a>
+      <a class="brand" href="index.html" aria-label="العودة لموقع جولة"><img id="admin-logo" src="assets/jawlah-logo.png" alt="جولة العقارية"></a>
       <div class="side-caption">إدارة الموقع</div>
       <nav class="side-nav" aria-label="القائمة">
         <button class="side-link active" data-section="properties"><span>⌂</span> العقارات</button>
+        <button class="side-link" data-section="customers"><span>♙</span> العملاء والطلبات</button>
+        <button class="side-link" data-section="settings"><span>⚙</span> إعدادات الموقع</button>
         <a class="side-link" href="index.html"><span>↗</span> معاينة الموقع</a>
       </nav>
       <div class="sidebar-foot"><span class="status-dot"></span> نظام إدارة جولة</div>
@@ -47,6 +49,12 @@
       </section>
 
       <section id="dashboard-panel" hidden>
+        <nav class="admin-tabs" aria-label="أقسام لوحة التحكم">
+          <button class="admin-tab active" type="button" data-admin-view="properties">العقارات</button>
+          <button class="admin-tab" type="button" data-admin-view="customers">العملاء والطلبات</button>
+          <button class="admin-tab" type="button" data-admin-view="settings">إعدادات الموقع</button>
+        </nav>
+        <div id="properties-section" class="admin-view">
         <div class="dashboard-heading">
           <div><h2>إدارة العقارات</h2><p>أضف العقارات وعدّل بياناتها وصورها المنشورة على الموقع.</p></div>
           <button id="add-property-btn" class="btn btn-primary" type="button"><span>＋</span> إضافة عقار</button>
@@ -62,6 +70,34 @@
           <div class="table-wrap"><table><thead><tr><th>العقار</th><th>النوع</th><th>الموقع</th><th>السعر</th><th>الوحدات</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="properties-body"></tbody></table></div>
           <div id="empty-state" class="empty-state" hidden><span>⌂</span><strong>لا توجد عقارات حتى الآن</strong><p>أضف أول عقار ليظهر هنا، ويمكنك حفظه كمسودة قبل نشره.</p><button class="btn btn-primary" type="button" data-add>إضافة أول عقار</button></div>
         </div>
+        </div>
+
+        <section id="customers-section" class="admin-view" hidden>
+          <div class="dashboard-heading"><div><h2>العملاء والطلبات</h2><p>تظهر هنا حسابات العملاء وطلبات الاهتمام المرسلة من الموقع.</p></div><button id="refresh-customers" class="btn btn-quiet" type="button">تحديث البيانات</button></div>
+          <div class="list-card customer-list"><div class="list-toolbar"><div><h3>حسابات العملاء</h3><p id="customer-count">تحميل الحسابات…</p></div></div><div class="table-wrap"><table><thead><tr><th>البريد الإلكتروني</th><th>تاريخ التسجيل</th></tr></thead><tbody id="customers-body"></tbody></table></div><div id="customers-empty" class="empty-state" hidden><strong>لا توجد حسابات عملاء حتى الآن</strong><p>ستظهر حسابات العملاء بعد إنشاء حساب من صفحة الموقع.</p></div></div>
+          <div class="list-card customer-list"><div class="list-toolbar"><div><h3>طلبات الاهتمام بالعقارات</h3><p id="inquiry-count">تحميل الطلبات…</p></div></div><div class="table-wrap"><table><thead><tr><th>العميل</th><th>التواصل</th><th>العقار</th><th>الكمية</th><th>تاريخ الطلب</th><th>الإجراء</th></tr></thead><tbody id="inquiries-body"></tbody></table></div><div id="inquiries-empty" class="empty-state" hidden><strong>لا توجد طلبات حتى الآن</strong><p>ستظهر هنا طلبات العملاء التي تُرسل من الموقع.</p></div></div>
+          <p class="security-note">كلمات المرور لا تظهر في لوحة التحكم؛ Supabase يديرها بشكل مشفّر وآمن.</p>
+        </section>
+
+        <section id="settings-section" class="admin-view" hidden>
+          <div class="dashboard-heading"><div><h2>إعدادات الموقع</h2><p>غيّر عناصر الهوية وروابط الموقع التي يراها الزوار.</p></div></div>
+          <form id="settings-form" class="settings-form">
+            <section class="settings-card"><h3>الشعار وغلاف الصفحة</h3><div class="settings-grid">
+              <div class="form-field"><label for="site-logo-file">شعار الموقع</label><input id="site-logo-file" type="file" accept="image/png,image/jpeg,image/webp"><div class="settings-preview logo-preview"><img id="site-logo-preview" src="assets/jawlah-logo.png" alt="معاينة الشعار"></div></div>
+              <div class="form-field"><label for="site-hero-file">غلاف الصفحة الرئيسية</label><input id="site-hero-file" type="file" accept="image/png,image/jpeg,image/webp"><div class="settings-preview hero-preview"><img id="site-hero-preview" src="assets/home-hero-v3.webp" alt="معاينة الغلاف"></div></div>
+            </div><p class="settings-help">يفضل استخدام صورة واضحة بصيغة JPG أو PNG أو WebP، بحجم أقل من 10 ميجابايت.</p></section>
+            <section class="settings-card"><h3>القائمة العلوية</h3><p class="settings-help">أضف روابط تظهر بجوار «الرئيسية» و«الخريطة». اكتب رابطًا يبدأ بـ https:// أو مسارًا مثل about.html.</p><div id="nav-link-rows" class="nav-link-rows"></div><button id="add-nav-link" class="btn btn-quiet" type="button">＋ إضافة رابط</button></section>
+            <section class="settings-card"><h3>التواصل والشبكات الاجتماعية</h3><div class="settings-grid">
+              <div class="form-field"><label for="contact-phone">رقم التواصل</label><input id="contact-phone" type="tel" dir="ltr" placeholder="+966 5X XXX XXXX"></div>
+              <div class="form-field"><label for="social-whatsapp">رابط واتساب</label><input id="social-whatsapp" type="url" dir="ltr" placeholder="https://wa.me/..."></div>
+              <div class="form-field"><label for="social-instagram">Instagram</label><input id="social-instagram" type="url" dir="ltr" placeholder="https://instagram.com/..."></div>
+              <div class="form-field"><label for="social-x">X</label><input id="social-x" type="url" dir="ltr" placeholder="https://x.com/..."></div>
+              <div class="form-field"><label for="social-snapchat">Snapchat</label><input id="social-snapchat" type="url" dir="ltr" placeholder="https://snapchat.com/..."></div>
+              <div class="form-field"><label for="social-facebook">Facebook</label><input id="social-facebook" type="url" dir="ltr" placeholder="https://facebook.com/..."></div>
+            </div></section>
+            <p id="settings-error" class="inline-error" role="alert" hidden></p><button id="save-settings" class="btn btn-primary" type="submit">حفظ إعدادات الموقع</button>
+          </form>
+        </section>
       </section>
     </section>
   </main>
