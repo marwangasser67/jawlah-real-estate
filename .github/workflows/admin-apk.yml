@@ -1,0 +1,80 @@
+name: Build Jawlah Admin APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/admin_main.dart'
+      - 'assets/branding/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/admin-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android-admin:
+    name: Jawlah Admin Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android native project
+        run: flutter create --platforms android --project-name jawlah_real_estate --org sa.jawlah .
+      - name: Name Admin app and assign separate Android package
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          src = manifest.read_text()
+          src = src.replace('android:label="jawlah_real_estate"', 'android:label="جولة | الإدارة"')
+          if '<uses-permission android:name="android.permission.INTERNET"' not in src:
+              src = src.replace('<application',
+                  '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
+          manifest.write_text(src)
+          gradle = Path('android/app/build.gradle.kts')
+          if gradle.exists():
+              text = gradle.read_text()
+              text, count = re.subn(r'applicationId\s*=\s*"[^"]+"',
+                  'applicationId = "sa.jawlah.admin"', text)
+              assert count == 1, 'Could not set Admin package id'
+              gradle.write_text(text)
+          else:
+              gradle = Path('android/app/build.gradle')
+              text = gradle.read_text()
+              text, count = re.subn(r'applicationId\s+["\'][^"\']+["\']',
+                  'applicationId "sa.jawlah.admin"', text)
+              assert count == 1, 'Could not set Admin package id'
+              gradle.write_text(text)
+          PY
+      - name: Fetch Flutter packages
+        run: flutter pub get
+      - name: Create Jawlah launcher icon
+        run: dart run flutter_launcher_icons
+      - name: Analyze Admin Dart source
+        run: flutter analyze --no-fatal-infos lib/admin_main.dart
+      - name: Build separate Jawlah Admin APK
+        run: flutter build apk --debug --target lib/admin_main.dart
+      - name: Stage named APK
+        run: |
+          mkdir -p releases
+          cp build/app/outputs/flutter-apk/app-debug.apk releases/Jawlah-Admin.apk
+      - name: Upload Jawlah Admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jawlah-admin-v1.0.0-apk
+          path: releases/Jawlah-Admin.apk
+          retention-days: 30
