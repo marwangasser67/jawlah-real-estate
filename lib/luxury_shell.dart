@@ -369,7 +369,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
                 icon: Icon(saved.contains(h.id)
                   ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   color: uiGold)),
-              IconButton(tooltip: 'قارن', onPressed: () => setCompare(h),
+              if (enabled('show_comparison')) IconButton(tooltip: 'قارن', onPressed: () => setCompare(h),
                 style: IconButton.styleFrom(backgroundColor: const Color(0xDD17191E)),
                 icon: Icon(compared.contains(h.id)
                   ? Icons.check_box_rounded : Icons.compare_arrows_rounded,
@@ -401,7 +401,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
           ]),
         ])),
       ])));
-  Widget quickCard(String label, IconData icon) => Expanded(
+  Widget quickCard(String label, IconData icon) => SizedBox(width: 116,
     child: InkWell(onTap: () => goBrowse(label),
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -501,12 +501,14 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
           borderRadius: BorderRadius.circular(16)),
         child: jawlahLogo(48)),
       const SizedBox(width: 12),
-      const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('جولة العقارية', style: TextStyle(
-            fontSize: 21, fontWeight: FontWeight.w900)),
-          Text('مساحتك تبدأ من هنا', style: TextStyle(
-            color: uiGold, fontSize: 12)),
+          Text(setting('app_name','جولة العقارية'), style: const TextStyle(
+            fontSize: 21, fontWeight: FontWeight.w900),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(setting('tagline','مساحتك تبدأ من هنا'), style: const TextStyle(
+            color: uiGold, fontSize: 12),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
         ])),
       IconButton(onPressed: () => setState(() => tab = 3),
         icon: const Icon(Icons.favorite_border, color: uiGold)),
@@ -516,7 +518,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(22),
         border: Border.all(color: uiGoldDim)),
       child: Stack(fit: StackFit.expand, children: [
-        propertyPicture(places.isEmpty ? kHeroPhoto : places.first.photo),
+        propertyPicture(heroProperty?.photo.isNotEmpty == true ? heroProperty!.photo : kHeroPhoto),
         const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [Color(0x22000000), Color(0xC70A0B0E), uiBg]))),
@@ -524,15 +526,15 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
           padding: const EdgeInsets.symmetric(horizontal: 12,vertical: 7),
           decoration: BoxDecoration(color: const Color(0xE7191B20),
             borderRadius: BorderRadius.circular(20)),
-          child: const Text('تجربة عقارية فاخرة',style: TextStyle(
+          child: Text(setting('hero_badge','جولة العقارية'),style: const TextStyle(
             color: uiGold,fontSize: 12,fontWeight: FontWeight.bold)))),
         Positioned(bottom: 18,right: 18,left: 18,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('اكتشف بيت أحلامك',style: TextStyle(
-              fontSize: 28,fontWeight: FontWeight.w900)),
+            Text(setting('hero_title','اكتشف بيت أحلامك'),style: const TextStyle(
+              fontSize: 27,fontWeight: FontWeight.w900),maxLines:2,overflow:TextOverflow.ellipsis),
             const SizedBox(height: 6),
-            const Text('فلل، شقق، وأراضٍ بخيارات تساعدك في البحث',
-              style: TextStyle(color: uiWhite,fontSize: 12)),
+            Text(setting('hero_subtitle','فلل، شقق، وأراضٍ بخيارات تساعدك في البحث'),
+              style: const TextStyle(color: uiWhite,fontSize: 12),maxLines:2,overflow:TextOverflow.ellipsis),
             const SizedBox(height: 16),
             SizedBox(width: 165,height: 42,
               child: FilledButton(onPressed: () => goBrowse(),
@@ -543,21 +545,39 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
           ])),
       ])),
     catalogFeedback(),
+    if (appSettings['announcement_enabled'] == true &&
+        setting('announcement','').isNotEmpty)
+      Container(margin:const EdgeInsets.only(top:12),padding:const EdgeInsets.all(14),
+        decoration:BoxDecoration(color:const Color(0xFF30271A),
+          border:Border.all(color:uiGoldDim),borderRadius:BorderRadius.circular(14)),
+        child:Row(children:[
+          const Icon(Icons.campaign_outlined,color:uiGold),
+          const SizedBox(width:10),
+          Expanded(child:Text(setting('announcement',''),
+            style:const TextStyle(color:uiWhite,fontSize:12,height:1.6))),
+        ])),
     headline('بحث حسب نوع العقار',hint:'اختار اللي يناسبك'),
-    Row(children: [
-      quickCard('فيلا',Icons.villa_outlined),
-      quickCard('شقة',Icons.apartment_rounded),
-      quickCard('أرض',Icons.landscape_outlined),
-    ]),
-    headline('مشاريع جولة المنشورة',hint:'عقارات حقيقية تتحدث من لوحة الإدارة',more:()=>goBrowse()),
+    SingleChildScrollView(scrollDirection: Axis.horizontal,child:Row(children:[
+      for (final label in (types.isEmpty ? <String>['فيلا','شقة','أرض'] : types))
+        quickCard(label, label=='فيلا' ? Icons.villa_outlined :
+          label=='شقة' ? Icons.apartment_rounded :
+          label=='أرض' ? Icons.landscape_outlined : Icons.other_houses_outlined),
+    ])),
+    headline(setting('featured_title','مشاريع جولة المنشورة'),hint:setting('featured_subtitle','عقارات حقيقية تتحدث من لوحة الإدارة'),more:()=>goBrowse()),
     ...places.take(2).map(propertyTile),
-    headline('أدوات عقارية',hint:'خدمات عملية تقدر تجربها'),
-    serviceCard('قارن بين العقارات','السعر والمساحة والغرف جنباً إلى جنب',
-      Icons.compare_arrows_rounded,()=>setState(()=>tab=2)),
-    serviceCard('حاسبة التمويل','احسب القسط الشهري تقريبياً',
-      Icons.calculate_outlined,openMortgage),
-    serviceCard('اطلب معاينة','احفظ موعداً مبدئياً على جهازك',
-      Icons.event_outlined,()=>places.isEmpty ? goBrowse() : request(places.first)),
+    if (homeBlocks.isNotEmpty) headline('أخبار وعروض جولة',hint:'إضافات جديدة من لوحة الإدارة'),
+    ...homeBlocks.map(customSection),
+    if (enabled('show_comparison') || enabled('show_calculator') || enabled('show_viewings'))
+      headline('أدوات عقارية',hint:'خدمات تساعدك في القرار'),
+    if (enabled('show_comparison'))
+      serviceCard('قارن بين العقارات','السعر والمساحة والغرف جنباً إلى جنب',
+        Icons.compare_arrows_rounded,()=>setState(()=>tab=2)),
+    if (enabled('show_calculator'))
+      serviceCard('حاسبة التمويل','احسب القسط الشهري تقريبياً',
+        Icons.calculate_outlined,openMortgage),
+    if (enabled('show_viewings'))
+      serviceCard('اطلب معاينة','احفظ موعداً مبدئياً على جهازك',
+        Icons.event_outlined,()=>places.isEmpty ? goBrowse() : request(places.first)),
     headline('اكتشف المزيد',more:()=>goBrowse()),
     ...places.skip(2).take(2).map(propertyTile),
   ]);
@@ -587,12 +607,12 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       const SizedBox(height: 11),
       SingleChildScrollView(scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for(final c in ['الكل','الرياض','جدة','الدمام','الخبر'])
+          for(final c in ['الكل',...cities])
             _choice(c,city,()=>setState(()=>city=c)),
         ])),
       SingleChildScrollView(scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for(final c in ['الكل','فيلا','شقة','أرض'])
+          for(final c in ['الكل',...types])
             _choice(c,category,()=>setState(()=>category=c)),
         ])),
       const SizedBox(height: 16),
@@ -644,13 +664,13 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
               const SizedBox(height:13),
               const Text('المدينة',style:TextStyle(fontWeight:FontWeight.bold)),
               Wrap(spacing:6,children:[
-                for(final v in ['الكل','الرياض','جدة','الدمام','الخبر'])
+                for(final v in ['الكل',...cities])
                   _choice(v,c,()=>change(()=>c=v)),
               ]),
               const SizedBox(height:13),
               const Text('نوع العقار',style:TextStyle(fontWeight:FontWeight.bold)),
               Wrap(spacing:6,children:[
-                for(final v in ['الكل','فيلا','شقة','أرض'])
+                for(final v in ['الكل',...types])
                   _choice(v,t,()=>change(()=>t=v)),
               ]),
               const SizedBox(height:14),
