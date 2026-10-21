@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'admin/api.dart';
 import 'admin/dashboard.dart';
+import 'admin/lock.dart';
 import 'admin/theme.dart';
 
 void main(){
@@ -26,7 +27,7 @@ class JawlahAdminApp extends StatelessWidget {
     debugShowCheckedModeBanner:false,
     theme:adminTheme(),
     home:const Directionality(textDirection:TextDirection.rtl,
-      child:AdminAuthGate()),
+      child:JawlahAdminPasswordGate(child:AdminAuthGate())),
   );
 }
 
