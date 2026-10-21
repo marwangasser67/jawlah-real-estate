@@ -296,6 +296,8 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       property: h, isSaved: () => saved.contains(h.id),
       isCompared: () => compared.contains(h.id),
       flipSaved: () => setSaved(h), flipCompare: () => setCompare(h),
+      allowCompare: enabled('show_comparison'),
+      allowViewing: enabled('show_viewings'),
       onRequest: () => request(h))));
   }
   void request(HomeInfo h) {
@@ -820,15 +822,24 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       else outlineAction('تسجيل الخروج',()=>widget.onLogout(context),
         icon:Icons.logout),
       headline('الخدمات والإعدادات'),
-      serviceCard('حاسبة التمويل','تقدير القسط الشهري بالريال',
-        Icons.calculate_outlined,openMortgage),
-      serviceCard('طلبات المعاينة','مسودات محفوظة محلياً: '+viewings.length.toString(),
-        Icons.event_note_outlined,showViewings),
-      serviceCard('قدّم عقارك','استمارة معاينة بيانات المالك',
-        Icons.add_home_work_outlined,openOwnerDraft),
+      if (enabled('show_calculator'))
+        serviceCard('حاسبة التمويل','تقدير القسط الشهري بالريال',
+          Icons.calculate_outlined,openMortgage),
+      if (enabled('show_viewings'))
+        serviceCard('طلبات المعاينة','مسودات محفوظة محلياً: '+viewings.length.toString(),
+          Icons.event_note_outlined,showViewings),
+      if (enabled('show_owner_submission'))
+        serviceCard('قدّم عقارك','استمارة معاينة بيانات المالك',
+          Icons.add_home_work_outlined,openOwnerDraft),
+      if (setting('contact_whatsapp','').isNotEmpty)
+        serviceCard('واتساب جولة','تواصل مباشرة مع الشركة',
+          Icons.chat_bubble_outline,()=>contactCompany('contact_whatsapp')),
+      if (setting('contact_phone','').isNotEmpty)
+        serviceCard('اتصل بجولة','رقم التواصل الرسمي الذي أدخلته الشركة',
+          Icons.phone_outlined,()=>contactCompany('contact_phone')),
       serviceCard('موقع الشركة','لعروض جولة الحقيقية',
         Icons.language,website),
-      serviceCard('عن التطبيق','الإصدار 0.5.0 — عقارات مباشرة',
+      serviceCard('عن التطبيق','الإصدار 0.6.0 — تحكم كامل في المحتوى',
         Icons.info_outline,about),
       if(viewed.isNotEmpty) ...[
         headline('شوهد مؤخراً'),
@@ -859,8 +870,8 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
     builder:(_)=>const OwnerDraftPage()));
   void about()=>showAboutDialog(context:context,
     applicationName:'جولة العقارية',
-    applicationVersion:'0.5.0',
-    children:[const Text('يعرض التطبيق العقارات الجاهزة للعرض وصورها من لوحة تحكم جولة العقارية. المقارنة والمفضلة تعمل على جهازك. طلبات المعاينة ومسودات المالك لا تُرسل للشركة بعد.')]);
+    applicationVersion:'0.6.0',
+    children:[const Text('واجهة متصلة بلوحة إدارة جولة: إضافة العقارات، المحتوى، الأقسام والعروض وإعدادات الصفحة الرئيسية عن بعد. بيانات العملاء والأرباح تظل خاصة. طلبات المعاينة ومسودات المالك لا تُرسل للشركة بعد.')]);
   @override
   Widget build(BuildContext context)=>Scaffold(
     backgroundColor:uiBg,
@@ -872,25 +883,28 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         border:Border(top:BorderSide(color:uiLine))),
       child:NavigationBar(
         height:69,backgroundColor:uiPanel,
-        selectedIndex:tab,indicatorColor:const Color(0xFF483820),
+        selectedIndex:!enabled('show_comparison') && tab>2 ? tab-1 : tab,
+        indicatorColor:const Color(0xFF483820),
         onDestinationSelected:(index) {
           FocusScope.of(context).unfocus();
-          setState(()=>tab=index);
-          if (index == 0 || index == 1) refreshCatalog(force: false);
+          final dest=(!enabled('show_comparison') && index>=2) ? index+1 : index;
+          setState(()=>tab=dest);
+          if (dest == 0 || dest == 1) refreshCatalog(force: false);
         },
         labelTextStyle:WidgetStateProperty.resolveWith((states)=>
           TextStyle(color:states.contains(WidgetState.selected)?uiGold:uiMuted,
             fontSize:10,fontWeight:FontWeight.bold)),
-        destinations:const [
-          NavigationDestination(icon:Icon(Icons.home_outlined),
+        destinations:[
+          const NavigationDestination(icon:Icon(Icons.home_outlined),
             selectedIcon:Icon(Icons.home,color:uiGold),label:'الرئيسية'),
-          NavigationDestination(icon:Icon(Icons.search),
+          const NavigationDestination(icon:Icon(Icons.search),
             selectedIcon:Icon(Icons.search,color:uiGold),label:'بحث'),
-          NavigationDestination(icon:Icon(Icons.compare_arrows),
-            selectedIcon:Icon(Icons.compare,color:uiGold),label:'مقارنة'),
-          NavigationDestination(icon:Icon(Icons.favorite_border),
+          if(enabled('show_comparison'))
+            const NavigationDestination(icon:Icon(Icons.compare_arrows),
+              selectedIcon:Icon(Icons.compare,color:uiGold),label:'مقارنة'),
+          const NavigationDestination(icon:Icon(Icons.favorite_border),
             selectedIcon:Icon(Icons.favorite,color:uiGold),label:'المفضلة'),
-          NavigationDestination(icon:Icon(Icons.person_outline),
+          const NavigationDestination(icon:Icon(Icons.person_outline),
             selectedIcon:Icon(Icons.person,color:uiGold),label:'حسابي'),
         ]))));
 }
@@ -898,9 +912,11 @@ class PropertyPage extends StatefulWidget {
   final HomeInfo property;
   final bool Function() isSaved,isCompared;
   final VoidCallback flipSaved,flipCompare,onRequest;
+  final bool allowCompare,allowViewing;
   const PropertyPage({super.key,required this.property,
     required this.isSaved,required this.isCompared,
     required this.flipSaved,required this.flipCompare,
+    required this.allowCompare,required this.allowViewing,
     required this.onRequest});
   @override State<PropertyPage> createState()=>_PropertyPageState();
 }
@@ -955,12 +971,15 @@ class _PropertyPageState extends State<PropertyPage> {
             Text(p.description.trim().isEmpty ? 'تفاصيل إضافية لم تُضف بعد.' : p.description,
               style:const TextStyle(color:uiMuted,height:1.8)),
             const SizedBox(height:28),
-            goldAction('حفظ طلب معاينة مبدئي',widget.onRequest,
-              icon:Icons.calendar_today),
-            const SizedBox(height:11),
-            outlineAction(widget.isCompared()?'إزالة من المقارنة':'أضف إلى المقارنة',
-              (){widget.flipCompare();setState((){});},
-              icon:Icons.compare_arrows),
+            if(widget.allowViewing)
+              goldAction('حفظ طلب معاينة مبدئي',widget.onRequest,
+                icon:Icons.calendar_today),
+            if(widget.allowViewing && widget.allowCompare)
+              const SizedBox(height:11),
+            if(widget.allowCompare)
+              outlineAction(widget.isCompared()?'إزالة من المقارنة':'أضف إلى المقارنة',
+                (){widget.flipCompare();setState((){});},
+                icon:Icons.compare_arrows),
             sampleBanner(),
           ])),
       ]));
