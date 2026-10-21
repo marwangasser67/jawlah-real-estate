@@ -42,3 +42,13 @@ Main browsing experience is now in `lib/luxury_shell.dart`: polished black/gold 
 - **Important:** The Hatchable project currently has personal/private visibility, which blocks anonymous mobile users before the public catalog route runs. The owner must go to Hatchable project Settings and set visibility to Public. The dashboard's HTML page remains protected by `pages/index.js: access='admin'`; all `/api/admin/*` routes remain `access='admin'`.
 - In the admin panel, property status **جاهز للعرض** is required for appearance in the APK. Images have a stable gated /api/catalog-image/:id redirect that checks the property's published state before serving.
 - Requests/appointments still save locally on-device; backend CRM integration is a separate future feature.
+
+## v0.6.0 — Owner-managed customer app content
+- The customer app reads property data, images, custom sections and approved homepage settings from the public read-only `/api/catalog` route hosted by Hatchable.
+- New admin-only section: **تخصيص تطبيق العملاء**, editing app/hero copy, featured property background image, a public announcement, published promotions, dynamic property categories, comparison/calculator/viewing/owner-submission visibility, and contact buttons.
+- Owners can add custom home sections, linked to approved property pages, and reorder or hide them without shipping a new APK.
+- Personal customer and financial data is never present in the public catalog and all admin endpoints stay `access='admin'`.
+- A separate Android admin launcher is built with `flutter build apk --target lib/admin_main.dart` using the workflow `admin-apk.yml`; package ID `sa.jawlah.admin` allows side-by-side installation with the customer app. It uses Android Chrome Custom Tabs (browser login, not storing passwords inside the APK) plus an external Chrome fallback.
+- **Required configuration:** Hatchable project visibility is currently private/personal and MUST be changed by the owner to Public via Hatchable Settings to make the customer-facing catalog accessible to guest devices. The dashboard page itself is protected by admin-only route `pages/index.js` and the internal API endpoints are gated.
+- Content updates are live when the user refreshes the app. Entirely new native app flows or screen layouts beyond supplied content blocks still require a new Flutter release.
+- Customer viewing form and owner-submission form are still **local-only**; they do not create leads or send data to the company's back office.
