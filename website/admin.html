@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171819">
+  <title>لوحة التحكم | جولة العقارية</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <aside class="sidebar">
+      <a class="brand" href="index.html" aria-label="العودة لموقع جولة"><img src="assets/jawlah-logo.png" alt="جولة العقارية"></a>
+      <div class="side-caption">إدارة الموقع</div>
+      <nav class="side-nav" aria-label="القائمة">
+        <button class="side-link active" data-section="properties"><span>⌂</span> العقارات</button>
+        <a class="side-link" href="index.html"><span>↗</span> معاينة الموقع</a>
+      </nav>
+      <div class="sidebar-foot"><span class="status-dot"></span> نظام إدارة جولة</div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div><span class="eyebrow">جولة العقارية</span><h1>لوحة التحكم</h1></div>
+        <div class="user-area"><span id="user-email">مدير النظام</span><button id="logout-btn" class="btn btn-quiet" type="button" hidden>تسجيل الخروج</button></div>
+      </header>
+
+      <div id="setup-panel" class="setup-panel" hidden>
+        <span class="setup-icon">!</span>
+        <div><h2>باقي خطوة لتفعيل اللوحة</h2><p>أضف مفتاح Supabase العام في <code>supabase-config.js</code> ثم نفّذ ملف <code>supabase-schema.sql</code> في SQL Editor. خطوات الإعداد موجودة في <code>ADMIN_SETUP_AR.md</code>.</p></div>
+      </div>
+
+      <section id="login-panel" class="login-panel" hidden>
+        <div class="login-mark"><img src="assets/jawlah-logo.png" alt="جولة العقارية"></div>
+        <span class="eyebrow">مساحة الإدارة</span>
+        <h2>تسجيل دخول المدير</h2>
+        <p>استخدم حساب المدير الذي أنشأته في Supabase Authentication.</p>
+        <form id="admin-login-form">
+          <label for="admin-email">البريد الإلكتروني</label>
+          <input id="admin-email" type="email" autocomplete="username" required placeholder="admin@jawlah.sa" dir="ltr">
+          <label for="admin-password">كلمة المرور</label>
+          <input id="admin-password" type="password" autocomplete="current-password" required placeholder="••••••••••">
+          <button class="btn btn-primary login-submit" type="submit">دخول لوحة التحكم <span>←</span></button>
+          <p id="login-error" class="inline-error" role="alert" hidden></p>
+        </form>
+        <a class="back-link" href="index.html">العودة إلى الموقع</a>
+      </section>
+
+      <section id="dashboard-panel" hidden>
+        <div class="dashboard-heading">
+          <div><h2>إدارة العقارات</h2><p>أضف العقارات وعدّل بياناتها وصورها المنشورة على الموقع.</p></div>
+          <button id="add-property-btn" class="btn btn-primary" type="button"><span>＋</span> إضافة عقار</button>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card"><span>كل العقارات</span><strong id="stat-total">٠</strong><small>في قاعدة البيانات</small></article>
+          <article class="stat-card"><span>منشور</span><strong id="stat-published">٠</strong><small>ظاهر للزوار</small></article>
+          <article class="stat-card"><span>مسودة</span><strong id="stat-draft">٠</strong><small>غير ظاهرة للزوار</small></article>
+          <article class="stat-card"><span>وحدات متاحة</span><strong id="stat-units">٠</strong><small>حسب العقارات المسجلة</small></article>
+        </div>
+        <div class="list-card">
+          <div class="list-toolbar"><div><h3>قائمة العقارات</h3><p id="property-count">تحميل العقارات…</p></div><div class="filters"><input id="search-input" type="search" placeholder="ابحث باسم العقار أو المدينة"><select id="status-filter" aria-label="فلترة الحالة"><option value="all">كل الحالات</option><option value="published">منشور</option><option value="draft">مسودة</option><option value="archived">مؤرشف</option></select></div></div>
+          <div class="table-wrap"><table><thead><tr><th>العقار</th><th>النوع</th><th>الموقع</th><th>السعر</th><th>الوحدات</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="properties-body"></tbody></table></div>
+          <div id="empty-state" class="empty-state" hidden><span>⌂</span><strong>لا توجد عقارات حتى الآن</strong><p>أضف أول عقار ليظهر هنا، ويمكنك حفظه كمسودة قبل نشره.</p><button class="btn btn-primary" type="button" data-add>إضافة أول عقار</button></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="property-dialog" class="property-dialog">
+    <form id="property-form" method="dialog">
+      <div class="dialog-heading"><div><span class="eyebrow">بيانات الإعلان</span><h2 id="dialog-title">إضافة عقار جديد</h2></div><button id="close-dialog" class="close-btn" type="button" aria-label="إغلاق">×</button></div>
+      <input id="property-id" type="hidden">
+      <div class="form-grid">
+        <div class="form-field"><label for="title">اسم العقار *</label><input id="title" name="title" required maxlength="140" placeholder="مثال: فيلا عصرية في حي الملقا"></div>
+        <div class="form-field"><label for="property-type">نوع العقار *</label><select id="property-type" name="property_type" required><option value="شقة">شقة</option><option value="فيلا">فيلا</option><option value="أرض">أرض</option></select></div>
+        <div class="form-field"><label for="city">المدينة *</label><input id="city" name="city" required placeholder="الرياض"></div>
+        <div class="form-field"><label for="district">الحي</label><input id="district" name="district" placeholder="حي الملقا"></div>
+        <div class="form-field"><label for="price">السعر بالريال السعودي *</label><input id="price" name="price_sar" type="number" min="0" step="1" required placeholder="2850000"></div>
+        <div class="form-field"><label for="deal-type">نوع الصفقة</label><select id="deal-type" name="deal_type"><option value="للبيع">للبيع</option><option value="للإيجار">للإيجار</option></select></div>
+        <div class="form-field"><label for="units">الوحدات المتاحة</label><input id="units" name="available_units" type="number" min="0" step="1" value="1"></div>
+        <div class="form-field"><label for="sold">نسبة البيع ٪</label><input id="sold" name="sold_percent" type="number" min="0" max="100" step="1" value="0"></div>
+        <div class="form-field"><label for="area">المساحة م²</label><input id="area" name="area_sqm" type="number" min="0" step="0.1" placeholder="450"></div>
+        <div class="form-field"><label for="bedrooms">غرف النوم</label><input id="bedrooms" name="bedrooms" type="number" min="0" step="1"></div>
+        <div class="form-field"><label for="bathrooms">دورات المياه</label><input id="bathrooms" name="bathrooms" type="number" min="0" step="1"></div>
+        <div class="form-field"><label for="status">حالة الإعلان</label><select id="status" name="status"><option value="draft">مسودة</option><option value="published">منشور على الموقع</option><option value="archived">مؤرشف</option></select></div>
+        <div class="form-field full"><label for="description">الوصف والمواصفات</label><textarea id="description" name="description" rows="5" placeholder="اكتب مواصفات العقار ومميزاته وملاحظات الإعلان"></textarea></div>
+        <div class="form-field full"><label for="photos">صور العقار</label><input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple><small>ارفع صورًا واضحة بصيغة JPG أو PNG أو WebP (حتى 10 ميجابايت للصورة).</small><div id="image-preview" class="image-preview"></div></div>
+      </div>
+      <p id="form-error" class="inline-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="cancel-dialog" class="btn btn-quiet" type="button">إلغاء</button><button id="save-property" class="btn btn-primary" type="submit">حفظ العقار</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
