@@ -52,7 +52,7 @@ const password = document.getElementById('password');
       ['land-qirawan','أرض','أرض سكنية في حي القيروان','حي القيروان',1100000,4,40,'assets/land-v3.webp',null,null,500],
       ['land-khair','أرض','أرض سكنية في حي الخير','حي الخير',720000,6,16,'assets/land-v3.webp',null,null,400]
     ];
-    const properties = propertyRows.map((row,index) => {
+    let properties = propertyRows.map((row,index) => {
       const extraImage = row[1]==='شقة' ? 'assets/apartment-gallery-v1.png' : row[1]==='أرض' ? 'assets/land-gallery-v1.png' : (row[7]==='assets/villa-malka-v3.webp'?'assets/villa-sahafa-v3.webp':'assets/villa-malka-v3.webp');
       return {id:row[0],type:row[1],title:row[2],district:row[3],city:'الرياض',price:row[4],available:row[5],sold:row[6],image:row[7],images:[row[7],extraImage],beds:row[8],baths:row[9],area:row[10],x:18+(index*23)%65,y:17+(index*19)%67,nearby:[['🛍','مركز تسوق قريب','تسوق وخدمات','٨ دقائق'],['🏥','مركز صحي قريب','رعاية صحية','٦ دقائق'],['🕌','جامع الحي','مسجد','٤ دقائق']]};
     });
@@ -61,6 +61,59 @@ const password = document.getElementById('password');
     let selectedUnits = 1;
     let pendingRequest = null;
     let zoom = 1;
+    let listingSource = 'demo';
+    const supabaseReady = Boolean(
+      window.supabase?.createClient &&
+      window.JAWLAH_SUPABASE_URL &&
+      window.JAWLAH_SUPABASE_PUBLISHABLE_KEY &&
+      !window.JAWLAH_SUPABASE_PUBLISHABLE_KEY.includes('PASTE_')
+    );
+    const jawlahDb = supabaseReady
+      ? window.supabase.createClient(window.JAWLAH_SUPABASE_URL, window.JAWLAH_SUPABASE_PUBLISHABLE_KEY)
+      : null;
+
+    async function loadPublishedProperties() {
+      if (!jawlahDb) return;
+      try {
+        const { data, error } = await jawlahDb
+          .from('properties')
+          .select('*')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        properties = (data || []).map((row, index) => {
+          const images = Array.isArray(row.gallery_urls) ? row.gallery_urls.filter(Boolean) : [];
+          const cover = row.cover_image_url || images[0] || 'assets/villa-malka-v3.webp';
+          return {
+            id: row.id,
+            type: row.property_type,
+            title: row.title,
+            district: row.district || '',
+            city: row.city || '',
+            deal: row.deal_type || 'للبيع',
+            price: Number(row.price_sar || 0),
+            available: Number(row.available_units || 0),
+            sold: Number(row.sold_percent || 0),
+            image: cover,
+            images: images.length ? images : [cover],
+            beds: row.bedrooms,
+            baths: row.bathrooms,
+            area: Number(row.area_sqm || 0),
+            x: Number(row.map_x || 50 + (index * 7) % 25),
+            y: Number(row.map_y || 30 + (index * 11) % 45),
+            description: row.description || '',
+            nearby: Array.isArray(row.nearby) ? row.nearby : [['🛍','مركز تسوق قريب','تسوق وخدمات','٨ دقائق'],['🏥','مركز صحي قريب','رعاية صحية','٦ دقائق'],['🕌','جامع الحي','مسجد','٤ دقائق']]
+          };
+        });
+        listingSource = 'live';
+        selectedProperty = properties.find(item => item.type === 'شقة') || properties[0] || null;
+        document.querySelector('.sample-note').textContent = 'عقارات مضافة من لوحة الإدارة';
+        renderProperties();
+      } catch (error) {
+        console.error('تعذر تحميل عقارات Supabase:', error);
+        showNotice('تعذر تحميل العقارات من قاعدة البيانات؛ تحقق من إعداد Supabase.');
+      }
+    }
     const formatPrice = amount => new Intl.NumberFormat('ar-SA').format(amount) + ' ريال';
     function quantityLabel(item,count) {
       if(item.type==='أرض') return count===1?'قطعة':count===2?'قطعتان':'قطع';
@@ -83,7 +136,7 @@ const password = document.getElementById('password');
     }
     function filteredProperties(prefix) {
       const f = activeFilters(prefix);
-      return properties.filter(item => (f.type === 'all' || item.type === f.type) && (f.city === 'all' || item.city === f.city) && priceMatches(item, f.price) && (f.deal === 'all' || f.deal === 'للبيع'));
+        return properties.filter(item => (f.type === 'all' || item.type === f.type) && (f.city === 'all' || item.city === f.city) && priceMatches(item, f.price) && (f.deal === 'all' || (item.deal || 'للبيع') === f.deal));
     }
     function cardMarkup(item) {
       return `<article class="property-card" data-property="${item.id}" tabindex="0" aria-label="${item.title}، ${formatPrice(item.price)}">
@@ -134,12 +187,12 @@ const password = document.getElementById('password');
       const nearby = item.nearby.map(place => `<div class="nearby-item"><span class="nearby-icon" aria-hidden="true">${place[0]}</span><div class="nearby-copy"><strong>${place[1]}</strong><span>${place[2]}</span></div><span class="nearby-time">${place[3]}</span></div>`).join('');
       return `<div class="detail-toolbar"><span>الرئيسية　‹　العقارات　‹　${item.title}</span><button class="back-to-list" id="back-to-list">→　العودة للعقارات</button></div>
         <div class="detail-layout"><div class="detail-gallery"><div class="detail-photo"><img class="gallery-main-image" src="${(item.images||[item.image])[0]}" alt="${item.title} في ${item.district} — الصورة ١"><span class="type-pill">${item.type}</span><button type="button" class="gallery-arrow gallery-prev" aria-label="الصورة السابقة">›</button><button type="button" class="gallery-arrow gallery-next" aria-label="الصورة التالية">‹</button><span class="gallery-counter" id="gallery-counter">1 / ${(item.images||[item.image]).length}</span></div><div class="gallery-thumbs" aria-label="صور العقار">${(item.images||[item.image]).map((src,index)=>`<button type="button" class="gallery-thumb ${index===0?'active':''}" data-gallery-index="${index}" aria-label="عرض الصورة ${index+1}" aria-pressed="${index===0}"><img src="${src}" alt="${item.title} — صورة ${index+1}"></button>`).join('')}</div></div>
-        <div class="detail-card"><span class="detail-eyebrow">عقار تجريبي للمعاينة</span><h1>${item.title}</h1><p class="detail-location">⌖　${item.district}، ${item.city}</p><p class="detail-price">${formatPrice(item.price)} <small style="font-size:13px;font-weight:500;color:#777">للوحدة</small></p>
+        <div class="detail-card"><span class="detail-eyebrow">${listingSource === 'live' ? 'عقار منشور من جولة العقارية' : 'عقار تجريبي للمعاينة'}</span><h1>${item.title}</h1><p class="detail-location">⌖　${item.district}، ${item.city}</p><p class="detail-price">${formatPrice(item.price)} <small style="font-size:13px;font-weight:500;color:#777">للوحدة</small></p>
         <div class="sold-panel"><div class="sold-heading"><span>نسبة بيع هذا العقار</span><strong>تم بيع ${new Intl.NumberFormat('ar-SA').format(item.sold)}%</strong></div><div class="detail-sales-track" role="progressbar" aria-label="نسبة البيع" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${item.sold}"><div class="detail-sales-fill" style="width:${item.sold}%"></div></div><span class="sold-note">${new Intl.NumberFormat('ar-SA').format(item.sold)}% من الوحدات مباعة</span></div>
         <div class="quick-specs">${specs.map(spec => `<div class="quick-spec"><span>${spec[0]}</span><strong>${spec[1]}</strong></div>`).join('')}</div>
         <button class="available-select" id="available-detail" type="button">${availableLabel(item)}</button>
         <div class="unit-picker" id="unit-picker" hidden></div></div></div>
-        <div class="detail-lower"><section class="detail-section"><h2>مواصفات العقار</h2><p>${item.type==='أرض'?'قطعة أرض سكنية بمساحة '+new Intl.NumberFormat('ar-SA').format(item.area)+' م² في '+item.district+' بمدينة '+item.city+'.':'عقار '+item.type+' بمساحة '+new Intl.NumberFormat('ar-SA').format(item.area)+' م²، يضم '+item.beds+' غرف نوم و'+item.baths+' دورات مياه، في '+item.district+' بمدينة '+item.city+'.'}</p><p class="detail-demo-note">بيانات العقار المعروضة تجريبية، وتحتاج إلى تأكيد من الشركة.</p></section>
+        <div class="detail-lower"><section class="detail-section"><h2>مواصفات العقار</h2><p>${item.description || (item.type==='أرض'?'قطعة أرض سكنية بمساحة '+new Intl.NumberFormat('ar-SA').format(item.area)+' م² في '+item.district+' بمدينة '+item.city+'.':'عقار '+item.type+' بمساحة '+new Intl.NumberFormat('ar-SA').format(item.area)+' م²، يضم '+item.beds+' غرف نوم و'+item.baths+' دورات مياه، في '+item.district+' بمدينة '+item.city+'.')}</p>${listingSource === 'demo' ? '<p class="detail-demo-note">بيانات العقار المعروضة تجريبية، وتحتاج إلى تأكيد من الشركة.</p>' : ''}</section>
         <section class="detail-section"><h2>أماكن قريبة</h2><div class="nearby-list">${nearby}</div><p class="detail-demo-note">الأماكن وأوقات الوصول تقريبية وتجريبية للمعاينة.</p></section></div>`;
     }
     function openHomeProperty(item) {
@@ -232,7 +285,7 @@ const password = document.getElementById('password');
       if (sort === 'السعر من الأقل للأعلى') items.sort((a,b) => a.price-b.price);
       if (sort === 'السعر من الأعلى للأقل') items.sort((a,b) => b.price-a.price);
       if (sort === 'نسبة البيع الأعلى') items.sort((a,b) => b.sold-a.sold);
-      document.getElementById('result-count').textContent = `${new Intl.NumberFormat('ar-SA').format(items.length)} عقارات تجريبية مطابقة لبحثك`;
+      document.getElementById('result-count').textContent = `${new Intl.NumberFormat('ar-SA').format(items.length)} ${listingSource === 'live' ? 'عقارات' : 'عقارات تجريبية'} مطابقة لبحثك`;
       document.getElementById('map-results').innerHTML = items.length ? items.map(item => `<article class="map-result ${selectedProperty?.id===item.id?'selected':''}" data-property="${item.id}" tabindex="0"><img src="${item.image}" alt="${item.title}"><div><h3>${item.title}</h3><p>${item.district}، ${item.city}</p><strong>${formatPrice(item.price)}</strong><div class="mini-sales">مباع ${item.sold}%　<div class="sales-track"><div class="sales-fill" style="width:${item.sold}%"></div></div></div></div></article>`).join('') : '<div class="empty-state">لا توجد عقارات مطابقة للفلاتر الحالية.</div>';
       document.querySelectorAll('.map-result').forEach(card => {
         const choose = () => selectProperty(properties.find(item => item.id === card.dataset.property));
@@ -305,3 +358,4 @@ const password = document.getElementById('password');
     document.getElementById('zoom-out').addEventListener('click', () => { zoom=Math.max(zoom-.12,0.8); const map=document.getElementById('map-canvas'); map.style.backgroundSize=`${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%`; map.style.setProperty('--zoom',zoom); });
     document.getElementById('locate').addEventListener('click', () => showNotice('موقعك الحالي غير متاح على الخريطة التوضيحية.'));
     renderProperties();
+    loadPublishedProperties();
