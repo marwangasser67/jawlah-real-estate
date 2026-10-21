@@ -150,8 +150,11 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         headers: {'Accept': 'application/json'})
         .timeout(const Duration(seconds: 18));
       final mime = response.headers['content-type'] ?? '';
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const FormatException('الكتالوج مقفول حالياً. من إعدادات مشروع Hatchable غيّر Visibility إلى Public؛ صفحة الإدارة وبيانات العملاء ستظل محمية.');
+      }
       if (response.statusCode != 200 || !mime.contains('application/json')) {
-        throw const FormatException('كتالوج العقارات غير متاح. تأكد من صلاحيات عرض الكتالوج.');
+        throw const FormatException('رابط كتالوج العقارات غير متاح. تحقق من إعدادات مشروع Hatchable.');
       }
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       if (decoded is! Map<String, dynamic> || decoded['properties'] is! List) {
@@ -167,11 +170,13 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         isCatalogLoading = false;
         catalogError = null;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         isCatalogLoading = false;
-        catalogError = 'تعذر تحميل العقارات. تحقق من الإنترنت وإعدادات إتاحة الكتالوج، ثم أعد المحاولة.';
+        catalogError = error is FormatException
+          ? error.message
+          : 'تعذر تحميل العقارات. تحقق من الإنترنت وإعدادات إتاحة الكتالوج، ثم أعد المحاولة.';
       });
     }
   }
