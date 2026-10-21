@@ -30,6 +30,13 @@ class AdminApi {
       throw AdminException(response.statusCode,
         'تعذر الاتصال بالخادم. تحقق من الإنترنت وإعدادات إتاحة مشروع جولة.');
     }
+    if (response.statusCode == 401 &&
+        (map['error'] == 'login_required' ||
+          map['error'] == 'unauthorized' && map['login_url'] != null ||
+          map['type'] == 'unauthenticated')) {
+      throw const AdminException(428,
+        'استضافة جولة في Hatchable على وضع Personal. لازم مالك المشروع يفتح Settings > Sharing ويتيح الوصول العام للكتالوج والواجهات قبل استخدام التطبيق. بيانات العملاء والمالية مازالت محمية برمز المدير.');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AdminException(response.statusCode, (map['error'] ??
         map['message'] ?? 'حدث خطأ. حاول مرة أخرى.').toString());
