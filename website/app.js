@@ -1,6 +1,7 @@
 const password = document.getElementById('password');
     const toggle = document.getElementById('toggle-password');
     const notice = document.getElementById('notice');
+    const clientLogout = document.getElementById('client-logout');
     let noticeTimer;
     let authMode = 'login';
     let currentAuthUser = null;
@@ -30,14 +31,16 @@ const password = document.getElementById('password');
           if (error) throw error;
           if (data.session) {
             currentAuthUser = data.user;
+            await recordCustomerLogin();
             await enterPublicApp();
           } else {
-            showNotice('تم إنشاء الحساب. افتح رسالة التأكيد المرسلة إلى بريدك ثم سجّل الدخول.');
+            showNotice('تم إنشاء الحساب، لكن الدخول الفوري غير مفعّل. أوقف تأكيد البريد من إعدادات Supabase.');
           }
         } else {
           const { data, error } = await jawlahDb.auth.signInWithPassword({ email, password: password.value });
           if (error) throw error;
           currentAuthUser = data.user;
+          await recordCustomerLogin();
           await enterPublicApp();
         }
       } catch (error) {
@@ -62,6 +65,33 @@ const password = document.getElementById('password');
       event.currentTarget.textContent = authMode === 'signup' ? 'تسجيل الدخول' : 'إنشاء حساب جديد';
     });
 
+
+    clientLogout.addEventListener('click', async () => {
+      clientLogout.disabled = true;
+      try {
+        if (jawlahDb) {
+          const { error } = await jawlahDb.auth.signOut();
+          if (error) throw error;
+        }
+        currentAuthUser = null;
+        clientLogout.hidden = true;
+        document.getElementById('app-screen').classList.remove('visible');
+        document.getElementById('login-screen').hidden = false;
+        document.getElementById('login-form').reset();
+        password.type = 'password';
+        authMode = 'login';
+        document.getElementById('login-title').textContent = 'أهلاً بك من جديد';
+        document.getElementById('login-subtitle').textContent = 'سجّل الدخول إلى حسابك';
+        document.querySelector('.submit').firstChild.textContent = 'تسجيل الدخول ';
+        document.getElementById('signup-copy').textContent = 'ليس لديك حساب؟';
+        document.getElementById('signup-toggle').textContent = 'إنشاء حساب جديد';
+        window.scrollTo({top:0,behavior:'instant'});
+        showNotice('تم تسجيل الخروج.');
+      } catch (error) {
+        showNotice(error.message || 'تعذر تسجيل الخروج. حاول مرة أخرى.');
+      } finally { clientLogout.disabled = false; }
+    });
+
     function authErrorMessage(error) {
       const message = String(error?.message || '').toLowerCase();
       if (message.includes('invalid login') || message.includes('invalid credentials')) return 'البريد أو كلمة المرور غير صحيحة.';
@@ -69,7 +99,14 @@ const password = document.getElementById('password');
       if (message.includes('password') && message.includes('least')) return 'كلمة المرور لازم تكون ٦ أحرف على الأقل.';
       return error?.message || 'تعذر إكمال العملية. راجع البيانات وحاول مرة أخرى.';
     }
+    async function recordCustomerLogin() {
+      if (!jawlahDb || !currentAuthUser) return;
+      const { error } = await jawlahDb.rpc('record_customer_login');
+      if (error) console.warn('تعذر تسجيل وقت دخول العميل:', error.message);
+    }
+
     async function enterPublicApp() {
+      clientLogout.hidden = false;
       document.getElementById('login-screen').hidden = true;
       document.getElementById('app-screen').classList.add('visible');
       window.scrollTo({top:0,behavior:'instant'});
