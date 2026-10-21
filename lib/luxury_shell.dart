@@ -504,7 +504,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         ])),
       const SizedBox(height: 16),
       Row(children: [
-        Expanded(child: Text(results.length.toString()+' نتائج تجريبية',
+        Expanded(child: Text(results.length.toString()+' عقارات منشورة',
           style: const TextStyle(fontSize: 17,fontWeight: FontWeight.bold))),
         TextButton.icon(onPressed: filters,
           icon: const Icon(Icons.filter_alt_outlined),
@@ -531,6 +531,8 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
   void filters() {
     String c=city,t=category,o=sort;
     int p=maximum,b=minBeds,a=minArea;
+    final ceiling = math.max(6000000,
+      places.fold<int>(0, (largest, home) => math.max(largest, home.price)));
     showModalBottomSheet<void>(context:context,isScrollControlled:true,
       useSafeArea:true,backgroundColor:uiPanel,
       shape:const RoundedRectangleBorder(
@@ -559,10 +561,11 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
                   _choice(v,t,()=>change(()=>t=v)),
               ]),
               const SizedBox(height:14),
-              Text('السعر الأقصى: '+comma(p)+' ر.س'),
-              Slider(value:p.toDouble(),min:1000000,max:6000000,
-                divisions:20,activeColor:uiGold,
-                onChanged:(v)=>change(()=>p=v.round())),
+              Text(p==0 ? 'السعر الأقصى: بدون حد' : 'السعر الأقصى: '+comma(p)+' ر.س'),
+              Slider(value:(p==0 ? ceiling : math.min(ceiling,p)).toDouble(),
+                min:0,max:ceiling.toDouble(),
+                divisions:40,activeColor:uiGold,
+                onChanged:(v)=>change(()=>p=v.round()>=ceiling ? 0 : v.round())),
               Text('غرف النوم على الأقل: '+b.toString()),
               Slider(value:b.toDouble(),min:0,max:6,divisions:6,
                 activeColor:uiGold,onChanged:(v)=>change(()=>b=v.round())),
@@ -789,6 +792,7 @@ class PropertyPage extends StatefulWidget {
   @override State<PropertyPage> createState()=>_PropertyPageState();
 }
 class _PropertyPageState extends State<PropertyPage> {
+  int currentPhoto = 0;
   @override Widget build(BuildContext context) {
     final p=widget.property;
     return Scaffold(backgroundColor:uiBg,
@@ -799,12 +803,17 @@ class _PropertyPageState extends State<PropertyPage> {
       ]),
       body:ListView(children:[
         SizedBox(height:280,child:Stack(fit:StackFit.expand,children:[
-          propertyPicture(p.photo),
+          p.gallery.isEmpty ? propertyPicture(p.photo) : PageView.builder(
+            itemCount:p.gallery.length,
+            onPageChanged:(index)=>setState(()=>currentPhoto=index),
+            itemBuilder:(_,index)=>propertyPicture(p.gallery[index])),
           Positioned(bottom:12,right:14,child:Container(
             padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
-            color:const Color(0xDD17191E),
-            child:const Text('صورة توضيحية',style:TextStyle(
-              fontSize:11,color:uiGold)))),
+            decoration:BoxDecoration(color:const Color(0xDD17191E),
+              borderRadius:BorderRadius.circular(9)),
+            child:Text(p.gallery.isEmpty ? 'لم تُرفع صور لهذا العقار' :
+              'صورة '+(currentPhoto+1).toString()+' من '+p.gallery.length.toString(),
+              style:const TextStyle(fontSize:11,color:uiGold)))),
         ])),
         Padding(padding:const EdgeInsets.all(19),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -818,7 +827,7 @@ class _PropertyPageState extends State<PropertyPage> {
             const SizedBox(height:17),
             Text(comma(p.price)+' ر.س',style:const TextStyle(
               color:uiGold,fontSize:27,fontWeight:FontWeight.w900)),
-            const Text('سعر تجريبي غير معتمد',
+            const Text('السعر كما أدخلته شركة جولة في لوحة الإدارة',
               style:TextStyle(color:uiMuted,fontSize:12)),
             const SizedBox(height:20),
             Wrap(spacing:18,runSpacing:13,children:[
@@ -830,8 +839,8 @@ class _PropertyPageState extends State<PropertyPage> {
             const Text('وصف العقار',style:TextStyle(
               fontSize:22,fontWeight:FontWeight.w900)),
             const SizedBox(height:10),
-            const Text('نموذج عقاري توضيحي يعكس طريقة عرض العقارات في تطبيق جولة العقارية. الصور والأرقام والمدن للتجربة وليست عرضاً تجارياً فعلياً.',
-              style:TextStyle(color:uiMuted,height:1.8)),
+            Text(p.description.trim().isEmpty ? 'تفاصيل إضافية لم تُضف بعد.' : p.description,
+              style:const TextStyle(color:uiMuted,height:1.8)),
             const SizedBox(height:28),
             goldAction('حفظ طلب معاينة مبدئي',widget.onRequest,
               icon:Icons.calendar_today),
