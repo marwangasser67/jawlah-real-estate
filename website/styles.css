@@ -216,6 +216,10 @@
     .nav-link.active::after { position: absolute; content: ""; height: 2px; background: #b58c4a; bottom: 22px; inset-inline: 0; }
     .custom-nav-links { display:contents; }
     .account-mark { margin-inline-start: auto; color: #d2c5a7; font-size: 13px; white-space: nowrap; }
+    .client-logout { min-height:38px; padding:0 13px; border:1px solid #9a7c49; border-radius:8px; background:#ffffff08; color:#eadab9; font:600 13px var(--arabic); cursor:pointer; }
+    .client-logout:hover { background:#b08b5122; border-color:#c39a55; }
+    .client-logout:focus-visible { outline:2px solid #c39a55; outline-offset:2px; }
+    .client-logout[hidden] { display:none !important; }
     .view { display: none; }
     .view.active { display: block; }
     .home-hero { position: relative; min-height: clamp(390px, 35vw, 520px); display: flex; align-items: center; padding: 30px 5.4% 97px; background: #514c40 url('assets/home-hero-v3.webp') center center/cover no-repeat; overflow: visible; }
@@ -452,6 +456,7 @@
       .logo-home { position:absolute; right:14px; width:55px; height:60px; }
       .nav-logo { width:52px; height:58px; }
       .main-nav,.account-mark { display:none; }
+      .client-logout { position:absolute; left:12px; min-height:34px; padding:0 9px; font-size:11px; }
       .mobile-tabbar { position:fixed; z-index:50; inset-inline:0; bottom:0; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); padding:8px 7px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid #e7e4de; background:rgba(255,255,255,.97); box-shadow:0 -5px 20px #29241b12; backdrop-filter:blur(14px); }
       .mobile-tab { position:relative; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:2px 0; border:0; border-radius:10px; background:transparent; color:#85817a; font:500 10px var(--arabic); cursor:pointer; }
       .mobile-tab svg { width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
