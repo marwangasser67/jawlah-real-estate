@@ -643,7 +643,6 @@ class _AdminPhotosPageState extends State<AdminPhotosPage>{
           const Text('هذه الصور ستظهر للعملاء إذا كانت حالة العقار «جاهز للعرض»، بعد تفعيل إتاحة الكتالوج.',
             style:TextStyle(color:aMuted,fontSize:12,height:1.7)),
         ])),
-      ),
     );
   }
 }
