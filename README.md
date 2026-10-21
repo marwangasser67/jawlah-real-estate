@@ -27,3 +27,8 @@ Debug APK signing keys may differ between GitHub runners. If Android reports app
 
 ## Demo disclaimer
 Properties, images, places and prices are illustrative—not confirmed Jawlah offers. Real booking, admin, live property database and actual notifications are not implemented yet.
+
+
+## v0.4.0 responsive redesign (demo)
+
+Main browsing experience is now in `lib/luxury_shell.dart`: polished black/gold home, responsive listing cards, category exploration, live search, advanced city/type/price/area/bedroom filters, sortable results, save favorites, three-property comparison, viewed history, mathematical payment calculator, local draft viewing calendar, local owner preview, and official website handoff. All property content remains demo-only. Draft viewings are saved to the Android device; they are **not** submitted to the real estate company. Phone authentication continues to require a configured Supabase project and SMS provider.
