@@ -6,6 +6,7 @@ on:
     branches: [ main ]
     paths:
       - 'lib/**'
+      - 'assets/branding/**'
       - 'pubspec.yaml'
       - '.github/workflows/android-apk.yml'
 
@@ -32,8 +33,21 @@ jobs:
           cache: true
       - name: Generate Android native project
         run: flutter create --platforms android --project-name jawlah_real_estate --org sa.jawlah .
+      - name: Set Arabic launcher app name
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          source = p.read_text()
+          source = source.replace('android:label="jawlah_real_estate"', 'android:label="جولة العقارية"')
+          if '<uses-permission android:name="android.permission.INTERNET"' not in source:
+              source = source.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application', 1)
+          p.write_text(source)
+          PY
       - name: Fetch Flutter dependencies
         run: flutter pub get
+      - name: Generate official Jawlah app icon
+        run: dart run flutter_launcher_icons
       - name: Analyze Dart source
         run: flutter analyze --no-fatal-infos lib
       - name: Build installable Android debug APK
@@ -44,6 +58,6 @@ jobs:
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: jawlah-luxury-android-apk
+          name: jawlah-v0.3.0-phone-otp-logo-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
