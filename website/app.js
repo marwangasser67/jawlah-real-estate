@@ -101,8 +101,12 @@ const password = document.getElementById('password');
     }
     async function recordCustomerLogin() {
       if (!jawlahDb || !currentAuthUser) return;
-      const { error } = await jawlahDb.rpc('record_customer_login');
-      if (error) console.warn('تعذر تسجيل وقت دخول العميل:', error.message);
+      try {
+        const { error } = await jawlahDb.rpc('record_customer_login');
+        if (error) console.warn('تعذر تسجيل وقت دخول العميل:', error.message);
+      } catch (error) {
+        console.warn('تعذر تسجيل وقت دخول العميل:', error.message);
+      }
     }
 
     async function enterPublicApp() {
