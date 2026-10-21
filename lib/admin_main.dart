@@ -1,14 +1,19 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:app_links/app_links.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const adminBackground = Color(0xFF0B0E12);
-const adminCard = Color(0xFF181D24);
-const adminGold = Color(0xFFDBB879);
-const adminText = Color(0xFFF7F3ED);
-const adminMuted = Color(0xFFB1B8C2);
-const adminPanelUrl = 'https://jawlah-real-estate-5sz9.hatchable.site';
+import 'admin/api.dart';
+import 'admin/dashboard.dart';
+import 'admin/theme.dart';
 
-void main() {
+void main(){
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const JawlahAdminApp());
 }
@@ -16,166 +21,248 @@ void main() {
 class JawlahAdminApp extends StatelessWidget {
   const JawlahAdminApp({super.key});
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: 'جولة | الإدارة',
-    theme: ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: adminBackground,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: adminGold,
-        brightness: Brightness.dark,
-        surface: adminCard,
-      ),
-    ),
-    home: const Directionality(
-      textDirection: TextDirection.rtl,
-      child: AdminLauncherScreen(),
-    ),
+  @override Widget build(BuildContext context)=>MaterialApp(
+    title:'جولة | الإدارة',
+    debugShowCheckedModeBanner:false,
+    theme:adminTheme(),
+    home:const Directionality(textDirection:TextDirection.rtl,
+      child:AdminAuthGate()),
   );
 }
 
-/// Uses Android's Chrome Custom Tabs to preserve the browser's secure login
-/// and cookies. No admin passwords or customer financial records are stored
-/// inside the APK. The remote admin routes require Hatchable admin access.
-class AdminLauncherScreen extends StatefulWidget {
-  const AdminLauncherScreen({super.key});
-
-  @override
-  State<AdminLauncherScreen> createState() => _AdminLauncherScreenState();
+class AdminAuthGate extends StatefulWidget{
+  const AdminAuthGate({super.key});
+  @override State<AdminAuthGate> createState()=>_AdminAuthGateState();
 }
 
-class _AdminLauncherScreenState extends State<AdminLauncherScreen> {
-  bool opening = false;
+class _AdminAuthGateState extends State<AdminAuthGate>{
+  static const _storage=FlutterSecureStorage(
+    aOptions:AndroidOptions(encryptedSharedPreferences:true));
+  static const _tokenKey='jawlah_admin_native_session';
+  static const _stateKey='jawlah_admin_pending_state';
+  static const _verifierKey='jawlah_admin_pending_verifier';
 
-  Future<void> openDashboard({bool external = false}) async {
-    if (opening) return;
-    setState(() => opening = true);
-    try {
-      final uri = Uri.parse(adminPanelUrl);
-      bool opened = await launchUrl(
-        uri,
-        mode: external ? LaunchMode.externalApplication : LaunchMode.inAppBrowserView,
-      );
-      if (!opened && !external) {
-        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final _api=const AdminApi();
+  final _links=AppLinks();
+  final _manual=TextEditingController();
+  StreamSubscription<Uri>? _subscription;
+  String? _token,_pairState,_verifier,_error;
+  bool _loading=true,_pairing=false,_redeeming=false,_showManual=false;
+
+  @override void initState(){
+    super.initState();
+    _subscription=_links.uriLinkStream.listen(
+      _acceptLink,onError:(_){if(mounted)setState(()=>
+        _error='تعذر فتح رابط الربط. يمكن إدخال الكود يدويًا.');});
+    _initialize();
+  }
+  Future<void> _initialize()async{
+    final token=await _storage.read(key:_tokenKey);
+    final verifier=await _storage.read(key:_verifierKey);
+    final state=await _storage.read(key:_stateKey);
+    if(!mounted)return;
+    setState((){
+      _token=token;
+      _verifier=verifier;
+      _pairState=state;
+      _loading=false;
+    });
+    try{
+      final initial=await _links.getInitialLink();
+      if(initial!=null)_acceptLink(initial);
+    }catch(_){}
+  }
+  @override void dispose(){
+    _subscription?.cancel();
+    _manual.dispose();
+    super.dispose();
+  }
+  String _random(int size){
+    final random=Random.secure();
+    return base64Url.encode(List<int>.generate(size,(_)=>random.nextInt(256)))
+      .replaceAll('=','');
+  }
+
+  Future<void> _startPairing()async{
+    if(_pairing)return;
+    setState((){_pairing=true;_error=null;});
+    try{
+      final verifier=_random(48);
+      final state=_random(24);
+      final hash=sha256.convert(utf8.encode(verifier)).toString();
+      await _storage.write(key:_verifierKey,value:verifier);
+      await _storage.write(key:_stateKey,value:state);
+      _verifier=verifier;
+      _pairState=state;
+      final url=Uri.parse(jawlahService + '/device-connect').replace(
+        queryParameters:{'challenge':hash,'state':state});
+      final opened=await launchUrl(url,mode:LaunchMode.externalApplication);
+      if(!opened){
+        throw Exception('متصفح الأمان لم يفتح. اتأكد إن Chrome مثبت.');
       }
-      if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('مش قادر أفتح لوحة التحكم. اتأكد إن Chrome مثبت وإن الإنترنت شغال.'),
-        ));
-      }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('تعذر فتح لوحة الإدارة. جرّب زر فتح عبر Chrome.'),
-      ));
-    } finally {
-      if (mounted) setState(() => opening = false);
+    }catch(e){
+      if(mounted)setState(()=>_error=
+        'تعذر بدء ربط الجهاز. افتح Chrome وتحقق من الإنترنت، ثم حاول مجددًا.');
+    }finally{
+      if(mounted)setState(()=>_pairing=false);
     }
   }
 
-  Widget service(IconData icon, String title, String description) =>
-    Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      decoration: BoxDecoration(
-        color: adminCard,
-        border: Border.all(color: const Color(0xFF373D46)),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(children: [
-        Container(
-          width: 43, height: 43,
-          decoration: BoxDecoration(
-            color: const Color(0xFF3D3020),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: adminGold, size: 23),
-        ),
-        const SizedBox(width: 13),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold, color: adminText)),
-            const SizedBox(height: 4),
-            Text(description, style: const TextStyle(
-              fontSize: 12, color: adminMuted, height: 1.45)),
-          ])),
-      ]));
+  Future<void> _acceptLink(Uri uri)async{
+    if(uri.scheme!='jawlahadmin'||uri.host!='activate')return;
+    final code=uri.queryParameters['code']??'';
+    final state=uri.queryParameters['state']??'';
+    await _activate(code,state);
+  }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: adminBackground,
-    appBar: AppBar(
-      backgroundColor: adminBackground,
-      centerTitle: true,
-      title: const Text('جولة | الإدارة',
-        style: TextStyle(color: adminGold, fontWeight: FontWeight.w900)),
-    ),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(22, 15, 22, 35),
-        children: [
-          Center(child: Container(
-            width: 125, height: 125, padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: adminCard,
-              border: Border.all(color: adminGold),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Image.asset('assets/branding/jawlah_launcher.png',
-              fit: BoxFit.contain),
-          )),
-          const SizedBox(height: 20),
-          const Text('لوحة تحكم جولة العقارية',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: adminText, fontSize: 26, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          const Text('إدارة شركتك وتطبيق العملاء من الموبايل',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: adminMuted, fontSize: 14)),
-          const SizedBox(height: 25),
-          service(Icons.home_work_outlined, 'العقارات والمشاريع',
-            'أضف العقارات، الأسعار، المساحات، والصور الحقيقية.'),
-          service(Icons.edit_note_outlined, 'تخصيص تطبيق العملاء',
-            'غيّر واجهة التطبيق والإعلانات والعروض والأقسام الجديدة.'),
-          service(Icons.groups_outlined, 'متابعة العملاء',
-            'راجع العملاء والمراحل والملاحظات والزيارات.'),
-          service(Icons.account_balance_wallet_outlined, 'الإيرادات والأرباح',
-            'سجّل الدخل والمصروفات وراجع التقارير المالية.'),
-          const SizedBox(height: 12),
-          SizedBox(height: 55, child: FilledButton.icon(
-            onPressed: opening ? null : () => openDashboard(),
-            style: FilledButton.styleFrom(
-              backgroundColor: adminGold, foregroundColor: adminBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15)),
-            ),
-            icon: opening ? const SizedBox.square(
-              dimension: 17, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.admin_panel_settings_outlined),
-            label: const Text('فتح لوحة التحكم', style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w900)),
-          )),
-          const SizedBox(height: 10),
-          TextButton.icon(
-            onPressed: opening ? null : () => openDashboard(external: true),
-            icon: const Icon(Icons.open_in_browser, size: 18),
-            label: const Text('فتح في Chrome'),
-            style: TextButton.styleFrom(foregroundColor: adminGold),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'لوحة التحكم خاصة بالمالك. يتم تسجيل الدخول عبر المتصفح الآمن، ولا يحتفظ التطبيق بكلمة مرور الإدارة أو بيانات العملاء.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: adminMuted, height: 1.65, fontSize: 11),
-          ),
-        ],
-      ),
-    ),
-  );
+  Future<void> _activate(String code,String state)async{
+    if(_redeeming)return;
+    setState((){_redeeming=true;_error=null;});
+    try{
+      final expected=_pairState??await _storage.read(key:_stateKey);
+      final verifier=_verifier??await _storage.read(key:_verifierKey);
+      if(expected==null||verifier==null||
+          state!=expected||code.length!=64){
+        throw const AdminException(400,
+          'رابط الربط مختلف عن طلب هذا الجهاز. ابدأ ربط جديد.');
+      }
+      final result=await _api.activate(
+        code:code,verifier:verifier,state:state);
+      final newToken=(result['token']??'').toString();
+      if(newToken.length!=64)throw const AdminException(502,
+        'لم تصل بيانات جلسة المدير من الخادم.');
+      await _storage.write(key:_tokenKey,value:newToken);
+      await _storage.delete(key:_verifierKey);
+      await _storage.delete(key:_stateKey);
+      if(!mounted)return;
+      setState((){
+        _token=newToken;
+        _verifier=null;_pairState=null;
+        _manual.clear();
+      });
+    }on AdminException catch(e){
+      if(mounted)setState(()=>_error=e.message);
+    }catch(_){
+      if(mounted)setState(()=>_error=
+        'الربط لم يكتمل. تأكد من الإنترنت وإتاحة خادم الإدارة، ثم جرّب مرة أخرى.');
+    }finally{
+      if(mounted)setState(()=>_redeeming=false);
+    }
+  }
+
+  Future<void> _manualActivation()async{
+    final value=_manual.text.trim();
+    final uri=Uri.tryParse(value);
+    String code=value;
+    if(uri!=null&&uri.scheme=='jawlahadmin'){
+      code=uri.queryParameters['code']??'';
+    }
+    final state=_pairState??await _storage.read(key:_stateKey);
+    await _activate(code,state??'');
+  }
+
+  Future<void> _signOut()async{
+    final old=_token;
+    await _storage.delete(key:_tokenKey);
+    await _storage.delete(key:_verifierKey);
+    await _storage.delete(key:_stateKey);
+    if(old!=null)await _api.signOut(old);
+    if(mounted)setState((){
+      _token=null;_verifier=null;_pairState=null;
+      _error=null;
+    });
+  }
+  void _expired()async{
+    await _storage.delete(key:_tokenKey);
+    if(mounted)setState((){
+      _token=null;
+      _error='جلسة المدير انتهت. اربط الموبايل بحساب جولة من جديد.';
+    });
+  }
+
+  @override Widget build(BuildContext context){
+    if(_loading)return const Scaffold(
+      body:Center(child:CircularProgressIndicator(color:aGold)));
+    if(_token!=null)return JawlahAdminHub(
+      token:_token!,onSignOut:_signOut,onSessionExpired:_expired);
+    return Scaffold(backgroundColor:aBg,body:SafeArea(
+      child:ListView(
+        padding:const EdgeInsets.fromLTRB(23,32,23,36),children:[
+          Center(child:Container(
+            height:118,width:118,padding:const EdgeInsets.all(8),
+            decoration:BoxDecoration(
+              color:aPanel,borderRadius:BorderRadius.circular(28),
+              border:Border.all(color:aGold)),
+            child:Image.asset('assets/branding/jawlah_launcher.png'))),
+          const SizedBox(height:22),
+          const Text('جولة | الإدارة',textAlign:TextAlign.center,
+            style:TextStyle(color:aGold,fontSize:30,
+              fontWeight:FontWeight.w900)),
+          const SizedBox(height:5),
+          const Text('تطبيق إدارة كامل على موبايلك',
+            textAlign:TextAlign.center,
+            style:TextStyle(fontSize:15,color:aMuted)),
+          const SizedBox(height:28),
+          panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,
+            children:[
+              const Text('إدارة حقيقية من داخل التطبيق',
+                style:TextStyle(fontSize:19,fontWeight:FontWeight.w900)),
+              const SizedBox(height:12),
+              const Row(children:[
+                Icon(Icons.home_work_outlined,color:aGold),
+                SizedBox(width:12),
+                Expanded(child:Text('إضافة وتعديل العقارات والأسعار والصور')),
+              ]),
+              const SizedBox(height:16),
+              const Row(children:[
+                Icon(Icons.people_outline,color:aGold),
+                SizedBox(width:12),
+                Expanded(child:Text('إدارة العملاء والصفقات والمعاينات')),
+              ]),
+              const SizedBox(height:16),
+              const Row(children:[
+                Icon(Icons.wallet_outlined,color:aGold),
+                SizedBox(width:12),
+                Expanded(child:Text('تسجيل الإيرادات والمصروفات والأرباح')),
+              ]),
+              const SizedBox(height:16),
+              const Row(children:[
+                Icon(Icons.tune_outlined,color:aGold),
+                SizedBox(width:12),
+                Expanded(child:Text('التحكم في واجهة تطبيق العملاء')),
+              ]),
+            ])),
+          const SizedBox(height:22),
+          goldButton(_pairing?'جارٍ فتح تسجيل الدخول...':
+            'ربط الجهاز بحساب المدير',
+            (_pairing||_redeeming)?null:_startPairing,
+            icon:Icons.verified_user_outlined),
+          const SizedBox(height:10),
+          const Text('لأمان بيانات عملائك، هتوافق على ربط الموبايل بحساب المدير مرة واحدة في المتصفح. بعدها هتستخدم شاشات الإدارة هنا بدون Chrome، لحد انتهاء الجلسة أو إلغائها.',
+            style:TextStyle(fontSize:12,color:aMuted,height:1.75),
+            textAlign:TextAlign.center),
+          const SizedBox(height:13),
+          if(_pairState!=null)
+            TextButton.icon(onPressed:()=>
+              setState(()=>_showManual=!_showManual),
+              icon:const Icon(Icons.key_outlined,color:aGold),
+              label:const Text('عندي كود ربط من المتصفح',
+                style:TextStyle(color:aGold))),
+          if(_showManual&&_pairState!=null) ...[
+            adminInput(_manual,'الصق كود الربط'),
+            const SizedBox(height:10),
+            goldButton(_redeeming?'جارٍ التحقق...':'تفعيل الكود',
+              _redeeming?null:_manualActivation,icon:Icons.check_circle),
+          ],
+          if(_error!=null) ...[
+            const SizedBox(height:15),
+            panel(child:Text(_error!,style:const TextStyle(
+              color:aRed,fontSize:12,height:1.7))),
+          ],
+          const SizedBox(height:22),
+          const Text('مهم: المشروع الحالي على Hatchable ما زال Personal؛ لازم إتاحة واجهات التطبيق من إعدادات النشر عشان بيانات الإدارة تتصل من الموبايل.',
+            style:TextStyle(color:aMuted,fontSize:11,height:1.6),
+            textAlign:TextAlign.center),
+        ])));
+  }
 }
