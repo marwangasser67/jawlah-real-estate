@@ -1,11 +1,13 @@
 
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Jawlah showcase: property images, locations and prices are fictitious.
-// Draft inquiries remain on the device, never sent to company servers.
+// Public, read-only catalog comes from approved Jawlah admin properties.
+// Viewing requests and owner previews remain local drafts.
 const uiBg = Color(0xFF0B0D10);
 const uiPanel = Color(0xFF191B20);
 const uiRaised = Color(0xFF27282D);
@@ -15,30 +17,36 @@ const uiWhite = Color(0xFFF9F6F1);
 const uiMuted = Color(0xFFB6B5B3);
 const uiLine = Color(0xFF3A3B40);
 
+const kJawlahCatalog = 'https://jawlah-real-estate-5sz9.hatchable.site/api/catalog';
+const kHeroPhoto =
+  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&q=85';
+
 class HomeInfo {
-  final String id, title, city, areaName, type, photo;
+  final String id, title, city, areaName, type, photo, description;
   final int price, sqm, beds, baths;
-  const HomeInfo(this.id, this.title, this.city, this.areaName,
-      this.type, this.photo, this.price, this.sqm, this.beds, this.baths);
+  final List<String> gallery;
+  const HomeInfo(
+    this.id, this.title, this.city, this.areaName,
+    this.type, this.photo, this.price, this.sqm, this.beds, this.baths,
+    {this.description = '', this.gallery = const []});
+
+  factory HomeInfo.fromCatalog(Map<String, dynamic> data) {
+    final raw = data['images'];
+    final photos = raw is List
+      ? raw.whereType<String>().where((s) => s.startsWith('https://')).toList()
+      : <String>[];
+    int integer(String field) =>
+      (num.tryParse((data[field] ?? 0).toString()) ?? 0).round();
+    String field(String key) => (data[key] ?? '').toString();
+    return HomeInfo(
+      field('id'), field('title'), field('city'), field('district'),
+      field('property_type'), photos.isEmpty ? '' : photos.first,
+      integer('price_sar'), integer('area_sqm'),
+      integer('bedrooms'), integer('bathrooms'),
+      description: field('description'), gallery: photos,
+    );
+  }
 }
-const places = <HomeInfo>[
-  HomeInfo('v1','فيلا فاخرة بتصميم عصري','الرياض','النرجس','فيلا',
-    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=900&q=82',5200000,450,6,5),
-  HomeInfo('a1','شقة راقية بإطلالة بانورامية','الرياض','الملقا','شقة',
-    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=900&q=82',1890000,210,3,3),
-  HomeInfo('v2','فيلا عائلية أنيقة','الرياض','حطين','فيلا',
-    'https://images.unsplash.com/photo-1600047509782-20d39509f26d?w=900&q=82',4600000,390,5,5),
-  HomeInfo('a2','شقة بتشطيبات حديثة','جدة','الشاطئ','شقة',
-    'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=900&q=82',1640000,180,3,2),
-  HomeInfo('v3','تاون هاوس فاخر','جدة','أبحر الشمالية','فيلا',
-    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900&q=82',3250000,290,4,4),
-  HomeInfo('l1','أرض سكنية مميزة','الدمام','الشاطئ','أرض',
-    'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&q=82',1750000,610,0,0),
-  HomeInfo('a3','شقة وسط المدينة','الرياض','العليا','شقة',
-    'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=900&q=82',1450000,145,2,2),
-  HomeInfo('v4','منزل مستقل','الخبر','العزيزية','فيلا',
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=82',2780000,315,4,3),
-];
 String comma(int number) => number.toString()
   .replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',');
 
@@ -84,7 +92,7 @@ Widget sampleBanner() => Container(
   child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Icon(Icons.info_outline, color: uiGold, size: 18),
     SizedBox(width: 8),
-    Expanded(child: Text('الصور والعقارات والأسعار المعروضة تجريبية وليست عروضاً فعلية للشركة.',
+    Expanded(child: Text('العقارات المعروضة منشورة من لوحة جولة العقارية. طلبات المعاينة تُحفظ على الجهاز ولا تُرسل للشركة تلقائيًا.',
       style: TextStyle(color: uiGold, fontSize: 11, height: 1.5))),
   ]));
 
@@ -98,21 +106,116 @@ class LuxuryShell extends StatefulWidget {
   State<LuxuryShell> createState() => _LuxuryShellState();
 }
 
-class _LuxuryShellState extends State<LuxuryShell> {
+class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
   final query = TextEditingController();
   final Set<String> saved = {}, compared = {};
   final List<String> viewed = [], viewings = [];
-  int tab = 0, maximum = 6000000, minBeds = 0, minArea = 0;
+  List<HomeInfo> places = [];
+  bool isCatalogLoading = true;
+  String? catalogError;
+  DateTime? lastCatalogRefresh;
+  int tab = 0, maximum = 0, minBeds = 0, minArea = 0;
   String city = 'الكل', category = 'الكل', sort = 'المميزة';
 
   @override
   void initState() {
-    super.initState(); _load();
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
+    refreshCatalog();
     query.addListener(_changed);
   }
   void _changed() { if (mounted) setState(() {}); }
   @override
-  void dispose() { query.removeListener(_changed); query.dispose(); super.dispose(); }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    query.removeListener(_changed);
+    query.dispose();
+    super.dispose();
+  }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) refreshCatalog(force: false);
+  }
+  Future<void> refreshCatalog({bool force = true}) async {
+    if (isCatalogLoading && lastCatalogRefresh != null) return;
+    if (!force && lastCatalogRefresh != null &&
+        DateTime.now().difference(lastCatalogRefresh!) < const Duration(seconds: 30)) {
+      return;
+    }
+    lastCatalogRefresh = DateTime.now();
+    if (mounted) setState(() => isCatalogLoading = true);
+    try {
+      final response = await http.get(Uri.parse(kJawlahCatalog),
+        headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 18));
+      final mime = response.headers['content-type'] ?? '';
+      if (response.statusCode != 200 || !mime.contains('application/json')) {
+        throw const FormatException('كتالوج العقارات غير متاح. تأكد من صلاحيات عرض الكتالوج.');
+      }
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is! Map<String, dynamic> || decoded['properties'] is! List) {
+        throw const FormatException('بيانات الكتالوج غير متوقعة.');
+      }
+      final updated = (decoded['properties'] as List)
+        .whereType<Map<String, dynamic>>()
+        .map(HomeInfo.fromCatalog)
+        .where((item) => item.id.isNotEmpty && item.title.isNotEmpty).toList();
+      if (!mounted) return;
+      setState(() {
+        places = updated;
+        isCatalogLoading = false;
+        catalogError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        isCatalogLoading = false;
+        catalogError = 'تعذر تحميل العقارات. تحقق من الإنترنت وإعدادات إتاحة الكتالوج، ثم أعد المحاولة.';
+      });
+    }
+  }
+
+  Widget catalogFeedback() {
+    if (isCatalogLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: uiGold)));
+    }
+    if (catalogError != null) {
+      return Container(
+        padding: const EdgeInsets.all(14), margin: const EdgeInsets.only(top: 10),
+        decoration: BoxDecoration(color: uiPanel,
+          border: Border.all(color: uiGoldDim),
+          borderRadius: BorderRadius.circular(13)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('تعذر تحديث العقارات',
+            style: TextStyle(color: uiGold, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(catalogError!, style: const TextStyle(color: uiMuted, fontSize: 12)),
+          const SizedBox(height: 10),
+          outlineAction('إعادة المحاولة', () => refreshCatalog(), icon: Icons.refresh),
+        ]));
+    }
+    if (places.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Column(children: [
+          const Icon(Icons.home_work_outlined, size: 43, color: uiGold),
+          const SizedBox(height: 9),
+          const Text('لا توجد عقارات منشورة حالياً',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          const Text('العقارات تظهر بعد اختيار «جاهز للعرض» من لوحة تحكم جولة.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: uiMuted, fontSize: 12)),
+          const SizedBox(height: 10),
+          outlineAction('تحديث العقارات', () => refreshCatalog(), icon: Icons.refresh),
+        ]));
+    }
+    return const SizedBox.shrink();
+  }
+
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     if (!mounted) return;
