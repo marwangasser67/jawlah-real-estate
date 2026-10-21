@@ -86,6 +86,6 @@ jobs:
       - name: Upload Jawlah Admin APK
         uses: actions/upload-artifact@v4
         with:
-          name: jawlah-admin-v2.0.0-native-apk
+          name: jawlah-admin-v2.1.0-password-gated-apk
           path: releases/Jawlah-Admin.apk
           retention-days: 30
