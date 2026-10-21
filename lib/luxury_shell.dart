@@ -48,7 +48,7 @@ Widget propertyPicture(String url, {double? height}) => Image.network(
     progress == null ? child : Container(
       height: height, color: uiRaised, alignment: Alignment.center,
       child: const Icon(Icons.apartment_rounded, size: 55, color: uiGold)),
-  errorBuilder: (_, _, _) => Container(
+  errorBuilder: (context, error, stackTrace) => Container(
     height: height, width: double.infinity,
     decoration: const BoxDecoration(gradient: LinearGradient(
       colors: [Color(0xFF4B3824), uiPanel])),
@@ -524,7 +524,7 @@ class _LuxuryShellState extends State<LuxuryShell> {
               Positioned(right:8,bottom:8,left:8,
                 child:Text(e.title,maxLines:2,
                   style:const TextStyle(fontSize:11,fontWeight:FontWeight.bold))),
-            ])))),
+            ]))),
         ])),
         const SizedBox(height:21),
         _compareLine('السعر',items.map((e)=>comma(e.price)+' ر.س').toList()),
