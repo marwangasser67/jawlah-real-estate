@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f6">
+  <title>تسجيل الدخول | جولة العقارية</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page" id="login-screen">
+    <img class="villa" src="assets/villa-malka-v3.webp" alt="واجهة فيلا سعودية فاخرة مع حديقة ومسبح">
+    <section class="login-card" aria-labelledby="login-title">
+      <img class="brand" src="assets/jawlah-logo.png" alt="جولة العقارية — JAWLAH">
+      <h1 id="login-title">أهلاً بك من جديد</h1>
+      <p class="subtitle">سجّل الدخول إلى حسابك</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="identity">البريد الإلكتروني أو رقم الجوال</label>
+          <div class="input-wrap">
+            <svg class="icon start" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c.5-3.3 3.1-5.2 7-5.2s6.5 1.9 7 5.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input class="email-input" id="identity" name="identity" type="text" autocomplete="username" placeholder="example@jawlah.sa" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="password">كلمة المرور</label>
+          <div class="input-wrap">
+            <input class="password-input" id="password" name="password" type="password" autocomplete="current-password" placeholder="•••••••••" required>
+            <button class="icon-button" id="toggle-password" type="button" aria-label="إظهار كلمة المرور" aria-pressed="false">
+              <svg class="icon" style="position:static;transform:none" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.7" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="options">
+          <label class="remember"><input type="checkbox" name="remember" checked><span>تذكرني</span></label>
+          <a class="forgot" href="#forgot">نسيت كلمة المرور؟</a>
+        </div>
+        <button class="submit" type="submit">تسجيل الدخول
+          <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5m0 0 7-7m-7 7 7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+      <hr class="divider">
+      <p class="signup">ليس لديك حساب؟ <a href="#signup">إنشاء حساب جديد</a></p>
+    </section>
+  </main>
+  <main class="app-screen" id="app-screen">
+    <header class="topbar">
+      <button class="logo-home" id="logo-home" type="button" aria-label="العودة إلى الصفحة الرئيسية" title="العودة إلى الرئيسية"><img class="nav-logo" src="assets/jawlah-logo-dark.png" alt="جولة العقارية JAWLAH"></button>
+      <nav class="main-nav" aria-label="القائمة الرئيسية">
+        <button class="nav-link active" data-view="home">الرئيسية</button>
+        <button class="nav-link" data-view="map">الخريطة</button>
+        <button class="nav-link" data-nav-type="شقة">الشقق</button>
+        <button class="nav-link" data-nav-type="فيلا">الفلل</button>
+        <button class="nav-link" data-nav-type="أرض">الأراضي</button>
+        <button class="nav-link" data-contact>تواصل معنا</button>
+      </nav>
+      <span class="account-mark">جولة العقارية</span>
+    </header>
+    <section class="view active" id="home-view" aria-label="الرئيسية">
+      <div class="home-hero">
+        <div class="hero-copy"><h2 id="hero-title">مستقبل مجتمعات<br>أجمل في المملكة</h2><p id="hero-subtitle">اكتشف نخبة من العقارات في أرقى أحياء المملكة</p></div>
+        <div class="searchbar" aria-label="البحث عن عقار">
+          <select class="home-type" aria-label="نوع العقار"><option value="all">نوع العقار — الكل</option><option>شقة</option><option>فيلا</option><option>أرض</option></select>
+          <select class="home-city" aria-label="المدينة"><option value="all">المدينة — الرياض</option><option>الرياض</option></select>
+          <select class="home-price" aria-label="نطاق السعر"><option value="all">نطاق السعر — الكل</option><option value="under3">أقل من 3 مليون</option><option value="3to6">3 إلى 6 مليون</option><option value="over6">أكثر من 6 مليون</option></select>
+          <select class="home-deal" aria-label="نوع الصفقة"><option value="all">نوع الصفقة — الكل</option><option>للبيع</option><option>للإيجار</option></select>
+          <button class="search-btn" id="home-search">بحث　⌕</button>
+        </div>
+      </div>
+      <section class="section-wrap" id="home-listings">
+        <div class="section-heading"><div><h2>عقارات مميزة</h2><p>مجموعة مختارة من أفضل الفرص العقارية في المملكة</p></div><span class="sample-note">بيانات تجريبية للمعاينة</span><button class="show-all" id="show-all">عرض جميع العقارات　‹</button></div>
+        <div class="property-grid" id="home-grid"></div>
+      </section>
+      <section class="property-detail detail-wrap" id="property-detail" hidden aria-live="polite"></section>
+    </section>
+    <section class="view interest-screen" id="interest-view" aria-label="طلب اهتمام بعقار">
+      <div class="interest-card" id="interest-card"></div>
+    </section>
+    <section class="view success-screen" id="success-view" aria-label="تأكيد الطلب">
+      <div class="success-card" id="success-card"></div>
+    </section>
+    <section class="view" id="map-view" aria-label="الخريطة">
+      <div class="map-toolbar">
+        <select class="map-type" aria-label="نوع العقار"><option value="all">نوع العقار — الكل</option><option>شقة</option><option>فيلا</option><option>أرض</option></select>
+        <select class="map-city" aria-label="المدينة"><option value="all">المدينة — الرياض</option><option>الرياض</option></select>
+        <select class="map-price" aria-label="نطاق السعر"><option value="all">نطاق السعر — الكل</option><option value="under3">أقل من 3 مليون</option><option value="3to6">3 إلى 6 مليون</option><option value="over6">أكثر من 6 مليون</option></select>
+        <select class="map-deal" aria-label="نوع الصفقة"><option value="all">نوع الصفقة — الكل</option><option>للبيع</option><option>للإيجار</option></select>
+        <button class="search-btn" id="map-search">بحث　⌕</button>
+      </div>
+      <div class="map-layout">
+        <div class="map-canvas" id="map-canvas" aria-label="خريطة توضيحية لأحياء الرياض">
+          <span class="district-label district-one">حي الملقا</span><span class="district-label district-two">حي العارض</span><span class="district-label district-three">حي السليمانية</span><span class="district-label district-four">حي الصحافة</span><span class="district-label district-five">حي النخيل</span>
+          <div class="map-markers" id="map-markers"></div>
+          <article class="map-popup" id="map-popup" hidden></article>
+          <div class="map-controls"><button id="locate" aria-label="موقعي الحالي" title="موقعي الحالي">⌖</button><button id="zoom-in" aria-label="تكبير الخريطة">+</button><button id="zoom-out" aria-label="تصغير الخريطة">−</button></div>
+          <span class="map-credit">خريطة توضيحية — الرياض</span>
+        </div>
+        <aside class="results-panel">
+          <div class="results-head"><h2>العقارات في هذه المنطقة</h2><p id="result-count">٤ عقارات تجريبية مطابقة لبحثك</p></div>
+          <select class="sort-select" aria-label="ترتيب النتائج"><option>الأقرب أولاً</option><option>السعر من الأقل للأعلى</option><option>السعر من الأعلى للأقل</option><option>نسبة البيع الأعلى</option></select>
+          <div class="map-results" id="map-results"></div>
+        </aside>
+      </div>
+    </section>
+    <nav class="mobile-tabbar" aria-label="تنقل التطبيق">
+      <button type="button" class="mobile-tab active" data-view="home" aria-label="الرئيسية">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>الرئيسية</span>
+      </button>
+      <button type="button" class="mobile-tab" data-view="map" aria-label="الخريطة">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15m6-12v15"/></svg><span>الخريطة</span>
+      </button>
+      <button type="button" class="mobile-tab" data-nav-type="شقة" aria-label="الشقق">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3 8 3v16M8 8h2m4 0h2M8 12h2m4 0h2M8 16h2m4 0h2M10 21v-3h4v3"/></svg><span>الشقق</span>
+      </button>
+      <button type="button" class="mobile-tab" data-nav-type="فيلا" aria-label="الفلل">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-6h6v6M8 11h.01M16 11h.01"/></svg><span>الفلل</span>
+      </button>
+      <button type="button" class="mobile-tab" data-nav-type="أرض" aria-label="الأراضي">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19 5 6l14-2 2 15zM3 19h18M8 6l1 13m5-14 1 14"/></svg><span>الأراضي</span>
+      </button>
+    </nav>
+  </main>
+  <div class="notice" id="notice" role="status" aria-live="polite"></div>
+  <script src="app.js"></script></body>
+</html>
