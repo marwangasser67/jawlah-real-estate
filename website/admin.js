@@ -10,6 +10,9 @@
   const toast = document.getElementById('toast');
   let client = null;
   let currentRows = [];
+  let customerRows = [];
+  let inquiryRows = [];
+  let currentSettings = { logo_url: '', home_hero_url: '', contact_phone: '', social_links: {}, nav_links: [] };
   let toastTimer;
 
   const hasConfig = Boolean(
@@ -90,6 +93,117 @@
     renderRows();
   }
 
+  function showAdminView(name) {
+    document.querySelectorAll('.admin-view').forEach(section => { section.hidden = section.id !== `${name}-section`; });
+    document.querySelectorAll('[data-admin-view]').forEach(button => button.classList.toggle('active', button.dataset.adminView === name));
+    document.querySelectorAll('.side-link[data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === name));
+    if (name === 'customers') loadCustomers().catch(error => notify(error.message || 'تعذر تحميل بيانات العملاء.'));
+    if (name === 'settings') loadSettings().catch(error => notify(error.message || 'تعذر تحميل إعدادات الموقع.'));
+  }
+
+  const dateLabel = value => value ? new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+
+  async function loadCustomers() {
+    const [accounts, inquiries, admins] = await Promise.all([
+      client.from('customer_accounts').select('user_id,email,created_at').order('created_at', { ascending: false }),
+      client.from('customer_inquiries').select('*').order('created_at', { ascending: false }),
+      client.from('admin_users').select('user_id')
+    ]);
+    if (accounts.error) throw accounts.error;
+    if (inquiries.error) throw inquiries.error;
+    if (admins.error) throw admins.error;
+    const adminIds = new Set((admins.data || []).map(row => row.user_id));
+    customerRows = (accounts.data || []).filter(row => !adminIds.has(row.user_id));
+    inquiryRows = inquiries.data || [];
+    document.getElementById('customers-body').innerHTML = customerRows.map(row => `<tr><td data-label="البريد الإلكتروني" dir="ltr">${esc(row.email)}</td><td data-label="تاريخ التسجيل">${dateLabel(row.created_at)}</td></tr>`).join('');
+    document.getElementById('customer-count').textContent = `${number(customerRows.length)} حساب`;
+    document.getElementById('customers-empty').hidden = customerRows.length > 0;
+    document.getElementById('inquiries-body').innerHTML = inquiryRows.map(row => `<tr><td data-label="العميل">${esc(row.name)}</td><td data-label="التواصل"><span dir="ltr">${esc(row.phone)}</span>${row.email ? `<br><small dir="ltr">${esc(row.email)}</small>` : ''}</td><td data-label="العقار">${esc(row.property_title)}</td><td data-label="الكمية">${number(row.units)}</td><td data-label="تاريخ الطلب">${dateLabel(row.created_at)}</td><td data-label="الإجراء"><button class="icon-action delete" type="button" data-delete-inquiry="${esc(row.id)}">حذف</button></td></tr>`).join('');
+    document.getElementById('inquiry-count').textContent = `${number(inquiryRows.length)} طلب`;
+    document.getElementById('inquiries-empty').hidden = inquiryRows.length > 0;
+    document.querySelectorAll('[data-delete-inquiry]').forEach(button => button.addEventListener('click', () => deleteInquiry(button.dataset.deleteInquiry)));
+  }
+
+  async function deleteInquiry(id) {
+    if (!window.confirm('تأكيد حذف طلب العميل؟')) return;
+    const { error } = await client.from('customer_inquiries').delete().eq('id', id);
+    if (error) return notify(error.message || 'تعذر حذف الطلب.');
+    await loadCustomers();
+    notify('تم حذف الطلب.');
+  }
+
+  function addNavRow(item = {}) {
+    const row = document.createElement('div');
+    row.className = 'nav-link-row';
+    row.innerHTML = `<input class="nav-label-input" maxlength="40" aria-label="اسم الرابط" placeholder="اسم الرابط مثل: من نحن" value="${esc(item.label || '')}"><input class="nav-url-input" maxlength="500" aria-label="رابط الصفحة" placeholder="https://example.com أو about.html" dir="ltr" value="${esc(item.url || '')}"><button class="icon-action delete remove-nav-link" type="button" aria-label="حذف الرابط">حذف</button>`;
+    row.querySelector('.remove-nav-link').addEventListener('click', () => row.remove());
+    document.getElementById('nav-link-rows').appendChild(row);
+  }
+
+  async function loadSettings() {
+    const { data, error } = await client.from('site_settings').select('*').eq('id', 1).maybeSingle();
+    if (error) throw error;
+    currentSettings = data || { logo_url: '', home_hero_url: '', contact_phone: '', social_links: {}, nav_links: [] };
+    document.getElementById('site-logo-preview').src = currentSettings.logo_url || 'assets/jawlah-logo.png';
+    document.getElementById('site-hero-preview').src = currentSettings.home_hero_url || 'assets/home-hero-v3.webp';
+    document.getElementById('contact-phone').value = currentSettings.contact_phone || '';
+    const social = currentSettings.social_links || {};
+    for (const key of ['whatsapp','instagram','x','snapchat','facebook']) document.getElementById(`social-${key}`).value = social[key] || '';
+    const holder = document.getElementById('nav-link-rows');
+    holder.replaceChildren();
+    (Array.isArray(currentSettings.nav_links) ? currentSettings.nav_links : []).forEach(addNavRow);
+    document.getElementById('admin-logo').src = currentSettings.logo_url || 'assets/jawlah-logo.png';
+  }
+
+  async function uploadSiteAsset(file, kind) {
+    if (!file) return null;
+    if (!['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('ارفع صورة PNG أو JPG أو WebP.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('حجم الصورة يجب أن يكون أقل من 10 ميجابايت.');
+    const extension = file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+    const path = `${kind}/${crypto.randomUUID ? crypto.randomUUID() : Date.now()}.${extension}`;
+    const { error } = await client.storage.from('site-assets').upload(path, file, { upsert: false, contentType: file.type });
+    if (error) throw error;
+    return client.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
+  }
+
+  function validNavUrl(value) {
+    const url = String(value || '').trim();
+    if (/^(https:\/\/|mailto:|tel:|\/|#|[a-z0-9_-]+\.html)/i.test(url)) return url;
+    throw new Error('رابط القائمة لازم يبدأ بـ https:// أو يكون مسار صفحة صحيح.');
+  }
+
+  async function saveSiteSettings(event) {
+    event.preventDefault();
+    const errorBox = document.getElementById('settings-error');
+    clearError(errorBox);
+    const button = document.getElementById('save-settings');
+    button.disabled = true;
+    button.textContent = 'جارٍ الحفظ…';
+    try {
+      const links = [...document.querySelectorAll('.nav-link-row')].map(row => ({
+        label: row.querySelector('.nav-label-input').value.trim(),
+        url: validNavUrl(row.querySelector('.nav-url-input').value)
+      })).filter(item => item.label && item.url);
+      if ([...document.querySelectorAll('.nav-link-row')].some(row => Boolean(row.querySelector('.nav-label-input').value.trim()) !== Boolean(row.querySelector('.nav-url-input').value.trim()))) throw new Error('أكمل اسم ورابط كل عنصر في القائمة أو احذف السطر الفارغ.');
+      const logo = await uploadSiteAsset(document.getElementById('site-logo-file').files[0], 'logo');
+      const hero = await uploadSiteAsset(document.getElementById('site-hero-file').files[0], 'hero');
+      const social = {};
+      for (const key of ['whatsapp','instagram','x','snapchat','facebook']) {
+        const value = document.getElementById(`social-${key}`).value.trim();
+        if (value) { const parsed = new URL(value); if (!['https:','http:'].includes(parsed.protocol)) throw new Error('روابط التواصل لازم تبدأ بـ https://'); social[key] = parsed.href; }
+      }
+      const payload = { id: 1, logo_url: logo || currentSettings.logo_url || null, home_hero_url: hero || currentSettings.home_hero_url || null, contact_phone: document.getElementById('contact-phone').value.trim(), social_links: social, nav_links: links, updated_at: new Date().toISOString() };
+      const { error } = await client.from('site_settings').upsert(payload, { onConflict: 'id' });
+      if (error) throw error;
+      currentSettings = payload;
+      document.getElementById('site-logo-file').value = '';
+      document.getElementById('site-hero-file').value = '';
+      document.getElementById('admin-logo').src = payload.logo_url || 'assets/jawlah-logo.png';
+      notify('تم حفظ إعدادات الموقع. حدّث صفحة الموقع لمشاهدة التغييرات.');
+    } catch (error) { showError(errorBox, error.message || 'تعذر حفظ الإعدادات.'); }
+    finally { button.disabled = false; button.textContent = 'حفظ إعدادات الموقع'; }
+  }
+
   async function enterDashboard(session) {
     if (!session) {
       document.getElementById('user-email').textContent = 'مدير النظام';
@@ -113,6 +227,8 @@
       console.error(loadError);
       notify('تعذر تحميل العقارات. تأكد من تشغيل ملف إعداد Supabase والصلاحيات.');
     }
+    loadCustomers().catch(error => console.error('تعذر تحميل العملاء:', error));
+    loadSettings().catch(error => console.error('تعذر تحميل إعدادات الموقع:', error));
   }
 
   function openEditor(row = null) {
@@ -247,6 +363,13 @@
   });
   document.getElementById('add-property-btn').addEventListener('click', () => openEditor());
   document.querySelector('[data-add]').addEventListener('click', () => openEditor());
+  document.querySelectorAll('[data-admin-view]').forEach(button => button.addEventListener('click', () => showAdminView(button.dataset.adminView)));
+  document.querySelectorAll('.side-link[data-section]').forEach(button => button.addEventListener('click', () => showAdminView(button.dataset.section)));
+  document.getElementById('refresh-customers').addEventListener('click', () => loadCustomers().then(() => notify('تم تحديث بيانات العملاء.')).catch(error => notify(error.message || 'تعذر تحديث البيانات.')));
+  document.getElementById('add-nav-link').addEventListener('click', () => addNavRow());
+  document.getElementById('settings-form').addEventListener('submit', saveSiteSettings);
+  document.getElementById('site-logo-file').addEventListener('change', event => { const file=event.target.files[0]; if(file)document.getElementById('site-logo-preview').src=URL.createObjectURL(file); });
+  document.getElementById('site-hero-file').addEventListener('change', event => { const file=event.target.files[0]; if(file)document.getElementById('site-hero-preview').src=URL.createObjectURL(file); });
   document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
   document.getElementById('cancel-dialog').addEventListener('click', () => dialog.close());
   propertyForm.addEventListener('submit', saveProperty);
