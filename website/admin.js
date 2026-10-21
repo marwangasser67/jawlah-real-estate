@@ -105,7 +105,7 @@
 
   async function loadCustomers() {
     const [accounts, inquiries, admins] = await Promise.all([
-      client.from('customer_accounts').select('user_id,email,created_at').order('created_at', { ascending: false }),
+      client.from('customer_accounts').select('user_id,email,created_at,last_login_at').order('created_at', { ascending: false }),
       client.from('customer_inquiries').select('*').order('created_at', { ascending: false }),
       client.from('admin_users').select('user_id')
     ]);
@@ -115,13 +115,23 @@
     const adminIds = new Set((admins.data || []).map(row => row.user_id));
     customerRows = (accounts.data || []).filter(row => !adminIds.has(row.user_id));
     inquiryRows = inquiries.data || [];
-    document.getElementById('customers-body').innerHTML = customerRows.map(row => `<tr><td data-label="البريد الإلكتروني" dir="ltr">${esc(row.email)}</td><td data-label="تاريخ التسجيل">${dateLabel(row.created_at)}</td></tr>`).join('');
+    document.getElementById('customers-body').innerHTML = customerRows.map(row => `<tr><td data-label="البريد الإلكتروني" dir="ltr">${esc(row.email)}</td><td data-label="تاريخ التسجيل">${dateLabel(row.created_at)}</td><td data-label="آخر تسجيل دخول">${row.last_login_at ? dateLabel(row.last_login_at) : "لم يسجل دخول بعد"}</td><td data-label="الإجراء"><button class="icon-action delete" type="button" data-delete-customer="${esc(row.user_id)}">حذف السجل</button></td></tr>`).join('');
     document.getElementById('customer-count').textContent = `${number(customerRows.length)} حساب`;
     document.getElementById('customers-empty').hidden = customerRows.length > 0;
     document.getElementById('inquiries-body').innerHTML = inquiryRows.map(row => `<tr><td data-label="العميل">${esc(row.name)}</td><td data-label="التواصل"><span dir="ltr">${esc(row.phone)}</span>${row.email ? `<br><small dir="ltr">${esc(row.email)}</small>` : ''}</td><td data-label="العقار">${esc(row.property_title)}</td><td data-label="الكمية">${number(row.units)}</td><td data-label="تاريخ الطلب">${dateLabel(row.created_at)}</td><td data-label="الإجراء"><button class="icon-action delete" type="button" data-delete-inquiry="${esc(row.id)}">حذف</button></td></tr>`).join('');
     document.getElementById('inquiry-count').textContent = `${number(inquiryRows.length)} طلب`;
+    document.querySelectorAll('[data-delete-customer]').forEach(button => button.addEventListener('click', () => deleteCustomer(button.dataset.deleteCustomer)));
     document.getElementById('inquiries-empty').hidden = inquiryRows.length > 0;
     document.querySelectorAll('[data-delete-inquiry]').forEach(button => button.addEventListener('click', () => deleteInquiry(button.dataset.deleteInquiry)));
+  }
+
+  async function deleteCustomer(userId) {
+    const row = customerRows.find(item => item.user_id === userId);
+    if (!row || !window.confirm(`حذف سجل العميل ${row.email} من لوحة التحكم؟ سيظل حساب دخوله موجودًا.`)) return;
+    const { error } = await client.from('customer_accounts').delete().eq('user_id', userId);
+    if (error) return notify(error.message || 'تعذر حذف سجل العميل.');
+    await loadCustomers();
+    notify('تم حذف سجل العميل من القائمة.');
   }
 
   async function deleteInquiry(id) {
