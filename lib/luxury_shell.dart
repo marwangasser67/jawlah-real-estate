@@ -281,7 +281,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         (h.title + h.city + h.areaName + h.type).toLowerCase().contains(term)) &&
       (city == 'الكل' || city == h.city) &&
       (category == 'الكل' || category == h.type) &&
-      h.price <= maximum && h.beds >= minBeds && h.sqm >= minArea).toList();
+      (maximum == 0 || h.price <= maximum) && h.beds >= minBeds && h.sqm >= minArea).toList();
     if (sort == 'السعر الأقل') { list.sort((a,b) => a.price.compareTo(b.price)); }
     if (sort == 'السعر الأعلى') { list.sort((a,b) => b.price.compareTo(a.price)); }
     if (sort == 'المساحة الأكبر') { list.sort((a,b) => b.sqm.compareTo(a.sqm)); }
@@ -423,7 +423,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(22),
         border: Border.all(color: uiGoldDim)),
       child: Stack(fit: StackFit.expand, children: [
-        propertyPicture(places.first.photo),
+        propertyPicture(places.isEmpty ? kHeroPhoto : places.first.photo),
         const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [Color(0x22000000), Color(0xC70A0B0E), uiBg]))),
@@ -449,14 +449,14 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
                   style: TextStyle(fontSize: 12,fontWeight: FontWeight.bold)))),
           ])),
       ])),
-    sampleBanner(),
+    catalogFeedback(),
     headline('بحث حسب نوع العقار',hint:'اختار اللي يناسبك'),
     Row(children: [
       quickCard('فيلا',Icons.villa_outlined),
       quickCard('شقة',Icons.apartment_rounded),
       quickCard('أرض',Icons.landscape_outlined),
     ]),
-    headline('مختارات جولة',hint:'نماذج توضيحية لاستعراض الواجهة',more:()=>goBrowse()),
+    headline('مشاريع جولة المنشورة',hint:'عقارات حقيقية تتحدث من لوحة الإدارة',more:()=>goBrowse()),
     ...places.take(2).map(propertyTile),
     headline('أدوات عقارية',hint:'خدمات عملية تقدر تجربها'),
     serviceCard('قارن بين العقارات','السعر والمساحة والغرف جنباً إلى جنب',
@@ -464,7 +464,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
     serviceCard('حاسبة التمويل','احسب القسط الشهري تقريبياً',
       Icons.calculate_outlined,openMortgage),
     serviceCard('اطلب معاينة','احفظ موعداً مبدئياً على جهازك',
-      Icons.event_outlined,()=>request(places.first)),
+      Icons.event_outlined,()=>places.isEmpty ? goBrowse() : request(places.first)),
     headline('اكتشف المزيد',more:()=>goBrowse()),
     ...places.skip(2).take(2).map(propertyTile),
   ]);
@@ -476,7 +476,13 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       const SizedBox(height: 7),
       const Text('بحث سريع وفلاتر تناسب احتياجاتك',
         style: TextStyle(color: uiMuted,fontSize: 13)),
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
+      Align(alignment: Alignment.centerLeft,
+        child: TextButton.icon(onPressed: () => refreshCatalog(),
+          icon: const Icon(Icons.refresh, size: 19),
+          label: const Text('تحديث من لوحة الإدارة'),
+          style: TextButton.styleFrom(foregroundColor: uiGold))),
+      const SizedBox(height: 8),
       TextField(controller: query,
         decoration: InputDecoration(
           hintText:'المدينة، الحي، نوع العقار',
@@ -505,8 +511,8 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
           label: const Text('فلاتر متقدمة'),
           style: TextButton.styleFrom(foregroundColor: uiGold)),
       ]),
-      sampleBanner(),
-      if (results.isEmpty) empty(Icons.search_off,'مفيش نتائج مناسبة',
+      if (places.isEmpty || catalogError != null || isCatalogLoading) catalogFeedback(),
+      if (places.isNotEmpty && results.isEmpty) empty(Icons.search_off,'مفيش نتائج مناسبة',
         'جرّب تغيّر المدينة أو السعر','مسح الفلاتر',clearFilters),
       ...results.map(propertyTile),
     ]);
@@ -520,7 +526,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         onSelected:(_)=>tap()));
   void clearFilters()=>setState(() {
     city='الكل';category='الكل';sort='المميزة';
-    maximum=6000000;minBeds=0;minArea=0;query.clear();
+    maximum=0;minBeds=0;minArea=0;query.clear();
   });
   void filters() {
     String c=city,t=category,o=sort;
@@ -706,7 +712,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         Icons.add_home_work_outlined,openOwnerDraft),
       serviceCard('موقع الشركة','لعروض جولة الحقيقية',
         Icons.language,website),
-      serviceCard('عن التطبيق','الإصدار 0.4.0 (تجريبي)',
+      serviceCard('عن التطبيق','الإصدار 0.5.0 — عقارات مباشرة',
         Icons.info_outline,about),
       if(viewed.isNotEmpty) ...[
         headline('شوهد مؤخراً'),
@@ -737,8 +743,8 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
     builder:(_)=>const OwnerDraftPage()));
   void about()=>showAboutDialog(context:context,
     applicationName:'جولة العقارية',
-    applicationVersion:'0.4.0',
-    children:[const Text('عرض تجريبي بتصميم جديد وفلاتر متقدمة ومقارنة وحاسبة تمويل ومواعيد معاينة محلية. لا يتم إرسال طلبات فعلية أو عرض عقارات معتمدة.')]);
+    applicationVersion:'0.5.0',
+    children:[const Text('يعرض التطبيق العقارات الجاهزة للعرض وصورها من لوحة تحكم جولة العقارية. المقارنة والمفضلة تعمل على جهازك. طلبات المعاينة ومسودات المالك لا تُرسل للشركة بعد.')]);
   @override
   Widget build(BuildContext context)=>Scaffold(
     backgroundColor:uiBg,
@@ -754,6 +760,7 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
         onDestinationSelected:(index) {
           FocusScope.of(context).unfocus();
           setState(()=>tab=index);
+          if (index == 0 || index == 1) refreshCatalog(force: false);
         },
         labelTextStyle:WidgetStateProperty.resolveWith((states)=>
           TextStyle(color:states.contains(WidgetState.selected)?uiGold:uiMuted,
