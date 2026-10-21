@@ -2,6 +2,9 @@ const password = document.getElementById('password');
     const toggle = document.getElementById('toggle-password');
     const notice = document.getElementById('notice');
     let noticeTimer;
+    let authMode = 'login';
+    let currentAuthUser = null;
+    let siteSettings = {};
     function showNotice(message) {
       notice.textContent = message;
       notice.classList.add('show');
@@ -14,22 +17,66 @@ const password = document.getElementById('password');
       toggle.setAttribute('aria-pressed', String(reveal));
       toggle.setAttribute('aria-label', reveal ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
     });
-    document.getElementById('login-form').addEventListener('submit', event => {
+    document.getElementById('login-form').addEventListener('submit', async event => {
       event.preventDefault();
       if (!event.currentTarget.reportValidity()) return;
-      document.getElementById('login-screen').hidden = true;
-      document.getElementById('app-screen').classList.add('visible');
-      window.scrollTo({top:0,behavior:'instant'});
-      renderProperties();
+      if (!jawlahDb) { showNotice('تسجيل الحسابات غير مفعّل حاليًا.'); return; }
+      const submit = event.currentTarget.querySelector('.submit');
+      submit.disabled = true;
+      const email = document.getElementById('identity').value.trim();
+      try {
+        if (authMode === 'signup') {
+          const { data, error } = await jawlahDb.auth.signUp({ email, password: password.value, options: { emailRedirectTo: window.location.href.split('#')[0] } });
+          if (error) throw error;
+          if (data.session) {
+            currentAuthUser = data.user;
+            await enterPublicApp();
+          } else {
+            showNotice('تم إنشاء الحساب. افتح رسالة التأكيد المرسلة إلى بريدك ثم سجّل الدخول.');
+          }
+        } else {
+          const { data, error } = await jawlahDb.auth.signInWithPassword({ email, password: password.value });
+          if (error) throw error;
+          currentAuthUser = data.user;
+          await enterPublicApp();
+        }
+      } catch (error) {
+        showNotice(authErrorMessage(error));
+      } finally { submit.disabled = false; }
     });
     document.querySelector('.forgot').addEventListener('click', event => {
       event.preventDefault();
-      showNotice('استعادة كلمة المرور متاحة بعد ربط نظام الحسابات.');
+      if (!jawlahDb) { showNotice('نظام الحسابات غير مفعّل حاليًا.'); return; }
+      const email = document.getElementById('identity').value.trim();
+      if (!email) { showNotice('اكتب بريدك الإلكتروني أولًا.'); return; }
+      jawlahDb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] })
+        .then(({ error }) => showNotice(error ? 'تعذر إرسال رسالة الاستعادة. حاول لاحقًا.' : 'لو البريد مسجل، هتوصلك رسالة لاستعادة كلمة المرور.'));
     });
-    document.querySelector('.signup a').addEventListener('click', event => {
+    document.getElementById('signup-toggle').addEventListener('click', event => {
       event.preventDefault();
-      showNotice('إنشاء الحساب متاح بعد ربط نظام الحسابات.');
+      authMode = authMode === 'login' ? 'signup' : 'login';
+      document.getElementById('login-title').textContent = authMode === 'signup' ? 'إنشاء حساب جديد' : 'أهلاً بك من جديد';
+      document.getElementById('login-subtitle').textContent = authMode === 'signup' ? 'أنشئ حسابك لاستكشاف العقارات' : 'سجّل الدخول إلى حسابك';
+      document.querySelector('.submit').firstChild.textContent = authMode === 'signup' ? 'إنشاء الحساب ' : 'تسجيل الدخول ';
+      document.getElementById('signup-copy').textContent = authMode === 'signup' ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟';
+      event.currentTarget.textContent = authMode === 'signup' ? 'تسجيل الدخول' : 'إنشاء حساب جديد';
     });
+
+    function authErrorMessage(error) {
+      const message = String(error?.message || '').toLowerCase();
+      if (message.includes('invalid login') || message.includes('invalid credentials')) return 'البريد أو كلمة المرور غير صحيحة.';
+      if (message.includes('already registered') || message.includes('already been registered')) return 'هذا البريد مسجل بالفعل. سجّل الدخول بدلًا من إنشاء حساب.';
+      if (message.includes('password') && message.includes('least')) return 'كلمة المرور لازم تكون ٦ أحرف على الأقل.';
+      return error?.message || 'تعذر إكمال العملية. راجع البيانات وحاول مرة أخرى.';
+    }
+    async function enterPublicApp() {
+      document.getElementById('login-screen').hidden = true;
+      document.getElementById('app-screen').classList.add('visible');
+      window.scrollTo({top:0,behavior:'instant'});
+      await loadSiteSettings();
+      await loadPublishedProperties();
+      renderProperties();
+    }
 
     // Listing and unit totals below are clearly identified as demo data, based on the supplied visual references.
     const propertyRows = [
@@ -71,6 +118,46 @@ const password = document.getElementById('password');
     const jawlahDb = supabaseReady
       ? window.supabase.createClient(window.JAWLAH_SUPABASE_URL, window.JAWLAH_SUPABASE_PUBLISHABLE_KEY)
       : null;
+
+    async function loadSiteSettings() {
+      if (!jawlahDb) return;
+      try {
+        const { data, error } = await jawlahDb.from('site_settings').select('*').eq('id', 1).maybeSingle();
+        if (error) throw error;
+        if (!data) return;
+        siteSettings = data;
+        if (data.logo_url) {
+          document.getElementById('login-logo').src = data.logo_url;
+          document.querySelector('.nav-logo').src = data.logo_url;
+        }
+        if (data.home_hero_url && !window.currentType) document.querySelector('.home-hero').style.backgroundImage = `url("${data.home_hero_url}")`;
+        renderCustomNavigation(data.nav_links || []);
+      } catch (error) { console.error('تعذر تحميل إعدادات الموقع:', error); }
+      renderContactLinks();
+    }
+    function renderCustomNavigation(items) {
+      const holder = document.getElementById('custom-nav-links');
+      if (!holder) return;
+      holder.innerHTML = (Array.isArray(items) ? items : []).map(item => {
+        const href = String(item.url || '#');
+        const safeHref = /^(https:\/\/|mailto:|tel:|\/|#|[a-z0-9_-]+\.html)/i.test(href) ? href : '#';
+        return `<a class="nav-link custom-nav-link" href="${escapeHtml(safeHref)}" ${/^https:\/\//i.test(safeHref) ? 'target="_blank" rel="noopener noreferrer"' : ''}>${escapeHtml(item.label || '')}</a>`;
+      }).join('');
+    }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
+    function renderContactLinks() {
+      const holder = document.getElementById('contact-links');
+      if (!holder) return;
+      const social = siteSettings.social_links || {};
+      const links = [];
+      if (siteSettings.contact_phone) links.push(`<a href="tel:${escapeHtml(siteSettings.contact_phone.replace(/[^+\d]/g,''))}">اتصل بنا: ${escapeHtml(siteSettings.contact_phone)}</a>`);
+      const names = {whatsapp:'واتساب',instagram:'Instagram',x:'X',snapchat:'Snapchat',facebook:'Facebook'};
+      Object.entries(names).forEach(([key,label]) => { if (social[key]) links.push(`<a href="${escapeHtml(safeExternalUrl(social[key]))}" target="_blank" rel="noopener noreferrer">${label}</a>`); });
+      holder.innerHTML = links.length ? links.join('') : '<p>بيانات التواصل لم تُضف بعد. أضفها من إعدادات الموقع في لوحة التحكم.</p>';
+    }
+    function safeExternalUrl(value) { try { const url=new URL(value); return ['https:','http:'].includes(url.protocol)?url.href:'#'; } catch { return '#'; } }
+    document.querySelectorAll('[data-contact]').forEach(button => button.addEventListener('click', () => { renderContactLinks(); document.getElementById('contact-dialog').showModal(); }));
+    document.getElementById('contact-close').addEventListener('click', () => document.getElementById('contact-dialog').close());
 
     async function loadPublishedProperties() {
       if (!jawlahDb) return;
@@ -167,7 +254,7 @@ const password = document.getElementById('password');
       const title = document.getElementById('hero-title');
       const subtitle = document.getElementById('hero-subtitle');
       const category = {
-        'all':{title:'مستقبل مجتمعات<br>أجمل في المملكة',subtitle:'اكتشف نخبة من العقارات في أرقى أحياء المملكة',image:'assets/home-hero-v3.webp'},
+        'all':{title:'مستقبل مجتمعات<br>أجمل في المملكة',subtitle:'اكتشف نخبة من العقارات في أرقى أحياء المملكة',image:siteSettings.home_hero_url || 'assets/home-hero-v3.webp'},
         'شقة':{title:'الشقق',subtitle:'بيوت تناسب أسلوب حياتك',image:'assets/apartment-v3.webp'},
         'فيلا':{title:'الفلل',subtitle:'مساكن استثنائية لحياة أرقى',image:'assets/villa-malka-v3.webp'},
         'أرض':{title:'الأراضي',subtitle:'فرص استثمارية لمستقبل واعد',image:'assets/land-v3.webp'}
@@ -242,17 +329,27 @@ const password = document.getElementById('password');
     function openInterestForm(item) {
       pendingRequest={propertyId:item.id,units:selectedUnits,total:item.price*selectedUnits};
       const summary=document.getElementById('interest-card');
-      summary.innerHTML=`<h1>طلب اهتمام بعقار</h1><p class="form-intro">أدخل بيانات التواصل، وستبقى تفاصيل العقار والكمية المختارة مرتبطة بطلبك.</p><div class="interest-summary"><div><span>العقار</span><strong>${item.title}</strong></div><div><span>الموقع</span><strong>${item.district}، ${item.city}</strong></div><div><span>الكمية المختارة</span><strong>${new Intl.NumberFormat('ar-SA').format(selectedUnits)} ${quantityLabel(item,selectedUnits)}</strong></div><div><span>الإجمالي التجريبي</span><strong>${formatPrice(item.price*selectedUnits)}</strong></div></div><form class="interest-form" id="interest-form"><div class="interest-field"><label for="interest-name">الاسم الكامل</label><input id="interest-name" name="name" required autocomplete="name" placeholder="الاسم الكامل"></div><div class="interest-field"><label for="interest-phone">رقم الجوال</label><input id="interest-phone" name="phone" type="tel" required autocomplete="tel" placeholder="05xxxxxxxx" dir="ltr"></div><div class="interest-field full"><label for="interest-email">البريد الإلكتروني</label><input id="interest-email" name="email" type="email" autocomplete="email" placeholder="example@jawlah.sa" dir="ltr"></div><div class="interest-field full"><label for="interest-note">ملاحظات (اختياري)</label><textarea id="interest-note" name="note" placeholder="اكتب أي استفسار إضافي"></textarea></div><button class="interest-submit" type="submit">إرسال الطلب</button><p class="interest-note">هذا نموذج تجريبي؛ لا يتم إرسال البيانات إلى خادم الشركة. يحتفظ الموقع بطلب المعاينة على هذا الجهاز فقط.</p></form>`;
+      summary.innerHTML=`<h1>طلب اهتمام بعقار</h1><p class="form-intro">أدخل بيانات التواصل، وستبقى تفاصيل العقار والكمية المختارة مرتبطة بطلبك.</p><div class="interest-summary"><div><span>العقار</span><strong>${item.title}</strong></div><div><span>الموقع</span><strong>${item.district}، ${item.city}</strong></div><div><span>الكمية المختارة</span><strong>${new Intl.NumberFormat('ar-SA').format(selectedUnits)} ${quantityLabel(item,selectedUnits)}</strong></div><div><span>الإجمالي</span><strong>${formatPrice(item.price*selectedUnits)}</strong></div></div><form class="interest-form" id="interest-form"><div class="interest-field"><label for="interest-name">الاسم الكامل</label><input id="interest-name" name="name" required autocomplete="name" placeholder="الاسم الكامل"></div><div class="interest-field"><label for="interest-phone">رقم الجوال</label><input id="interest-phone" name="phone" type="tel" required autocomplete="tel" placeholder="05xxxxxxxx" dir="ltr"></div><div class="interest-field full"><label for="interest-email">البريد الإلكتروني</label><input id="interest-email" name="email" type="email" autocomplete="email" placeholder="example@jawlah.sa" dir="ltr"></div><div class="interest-field full"><label for="interest-note">ملاحظات (اختياري)</label><textarea id="interest-note" name="note" placeholder="اكتب أي استفسار إضافي"></textarea></div><label class="interest-consent"><input type="checkbox" required><span>أوافق على استخدام بيانات التواصل للرد على طلب العقار.</span></label><button class="interest-submit" type="submit">إرسال الطلب</button><p class="interest-note">سيتم حفظ بيانات التواصل وطلب العقار في لوحة التحكم للرد عليك. كلمة المرور لا تُطلب في هذا النموذج.</p><p id="interest-error" class="inline-error" role="alert" hidden></p></form>`;
       document.getElementById('interest-form').addEventListener('submit',event=>{
         event.preventDefault();
         if(!event.currentTarget.reportValidity())return;
-        const formData=Object.fromEntries(new FormData(event.currentTarget).entries());
-        const saved={...pendingRequest,...formData,createdAt:new Date().toISOString()};
-        const requests=JSON.parse(localStorage.getItem('jawlah-demo-interest-requests')||'[]');
-        requests.push(saved);localStorage.setItem('jawlah-demo-interest-requests',JSON.stringify(requests));
-        showSuccess(item,saved);
+        saveInterestRequest(event.currentTarget,item);
       });
       showView('interest');
+    }
+    async function saveInterestRequest(form,item) {
+      const button=form.querySelector('.interest-submit');
+      const errorNode=form.querySelector('#interest-error');
+      button.disabled=true; button.textContent='جارٍ إرسال الطلب…'; errorNode.hidden=true;
+      try {
+        if (!jawlahDb) throw new Error('إرسال الطلبات غير مفعّل. حاول لاحقًا أو تواصل معنا مباشرة.');
+        const values=Object.fromEntries(new FormData(form).entries());
+        const payload={customer_user_id:currentAuthUser?.id||null,name:String(values.name||'').trim(),phone:String(values.phone||'').trim(),email:String(values.email||'').trim()||null,note:String(values.note||'').trim(),property_id:String(item.id),property_title:String(item.title),units:Number(pendingRequest.units),estimated_total:Number(pendingRequest.total)};
+        const {error}=await jawlahDb.from('customer_inquiries').insert(payload);
+        if(error)throw error;
+        showSuccess(item,payload);
+      } catch(error) { errorNode.textContent=error.message||'تعذر إرسال الطلب. حاول مرة أخرى.'; errorNode.hidden=false; }
+      finally { button.disabled=false; button.textContent='إرسال الطلب'; }
     }
     function showSuccess(item,request) {
       document.getElementById('success-card').innerHTML=`<div class="success-check" aria-hidden="true">✓</div><h1>تم استلام طلبك</h1><p>سيتواصل معك فريق جولة قريبًا</p>`;
@@ -347,7 +444,6 @@ const password = document.getElementById('password');
       renderProperties();
       showView('home');
     }));
-    document.querySelector('[data-contact]').addEventListener('click', () => showNotice('للتواصل مع جولة العقارية، أضف بيانات التواصل الرسمية هنا.'));
     document.querySelectorAll('.home-type,.home-city,.home-price,.home-deal').forEach(el => el.addEventListener('change', () => { window.currentType = el.classList.contains('home-type') && el.value !== 'all' ? el.value : (el.classList.contains('home-type') ? '' : window.currentType); renderProperties(); }));
     document.querySelectorAll('.map-type,.map-city,.map-price,.map-deal').forEach(el => el.addEventListener('change', renderMapResults));
     document.getElementById('home-search').addEventListener('click', () => { renderProperties(); document.getElementById('home-grid').scrollIntoView({behavior:'smooth',block:'start'}); });
@@ -358,4 +454,10 @@ const password = document.getElementById('password');
     document.getElementById('zoom-out').addEventListener('click', () => { zoom=Math.max(zoom-.12,0.8); const map=document.getElementById('map-canvas'); map.style.backgroundSize=`${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%,${100*zoom}% ${100*zoom}%`; map.style.setProperty('--zoom',zoom); });
     document.getElementById('locate').addEventListener('click', () => showNotice('موقعك الحالي غير متاح على الخريطة التوضيحية.'));
     renderProperties();
-    loadPublishedProperties();
+    if (jawlahDb) {
+      loadSiteSettings().catch(error=>console.error('تعذر تحميل إعدادات الموقع:',error));
+      jawlahDb.auth.getSession().then(async ({data}) => {
+        currentAuthUser=data.session?.user||null;
+        if(currentAuthUser) await enterPublicApp();
+      }).catch(error=>console.error('تعذر استعادة جلسة العميل:',error));
+    }
