@@ -37,10 +37,13 @@ jobs:
       - name: Analyze Dart source
         run: flutter analyze --no-fatal-infos lib
       - name: Build installable Android debug APK
-        run: flutter build apk --debug --dart-define=API_BASE_URL=https://mdar-alaakary-madar.hatchable.site
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build apk --debug --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: jawlah-android-debug-apk
+          name: jawlah-luxury-android-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          retention-days: 30

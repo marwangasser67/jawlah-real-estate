@@ -1,20 +1,30 @@
-# Jawlah Real Estate — Android-only cloud build starter
+# Jawlah Real Estate — Black & Gold Android demo
 
-This is an **initial runnable prototype**, not a complete production app. It supports Arabic RTL, demo listings, search/type filters, property details, Supabase property reads, and email authentication after configuration.
+Arabic RTL Flutter app for Jawlah Real Estate. Version 0.2.0.
 
-## From Android Chrome
-1. Create a free GitHub repository, e.g. `jawlah-real-estate`.
-2. Upload `pubspec.yaml`, `lib/main.dart`, `supabase/schema.sql`, and `.github/workflows/android-apk.yml` preserving folders. GitHub mobile web may be easier in **Desktop site** mode.
-3. Go to [supabase.com](https://supabase.com), create a project, open SQL Editor and run `supabase/schema.sql`.
-4. In Supabase Project Settings / API (or Connect), find **Project URL** and **publishable/anon public key**. Never use the service_role or secret key in the mobile app.
-5. In GitHub repository **Settings → Secrets and variables → Actions**, add repository secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
-6. In GitHub **Actions → Build Android APK → Run workflow**. The workflow also runs on pushes to main.
-7. When the workflow succeeds, open its run → **Artifacts → jawlah-debug-apk**, download the ZIP, extract it on Android, and install `app-debug.apk` (allow installation from that source if prompted).
-8. If Android warns about an unknown developer, that is expected for an unsigned-for-release debug test APK. Do not distribute this as a Play Store production release.
+## Screens
+- Cinematic welcome
+- Email/password login, registration and password reset (Supabase only when configured)
+- Phone code request and verification (Supabase Auth + SMS provider must be enabled)
+- Dark/gold browsing home, search, city/type filters
+- Property details, local favorites, empty notifications, profile, guest access
 
-## Important
-- `flutter create` in CI generates Android scaffolding, so the ZIP includes only custom source/configuration.
-- No iOS binary is built by this workflow. iOS needs a separate macOS signing/build workflow and Apple developer provisioning.
-- The demo record is fictional. Replace it with company-approved listings.
-- Current SQL grants public read only for published listings. No mobile client writes are allowed for properties.
-- Admin dashboard, favorites, appointments, push notifications, real listing images, payment integrations, production release signing and store deployment are **not implemented yet**.
+## Important truthfulness & limitations
+Listings, property descriptions, photographs, prices, locations and amounts in the app are **illustrative demo content**, not verified company property offers. A styled Flutter UI is not a screenshot-perfect copy of generated marketing mockups. The company emblem is temporarily represented by text and a building icon, not the source vector logo. Google and Apple sign-in have NOT been implemented. Real appointments, messaging inbox, admin panel, property database, and persistent user sessions are not yet implemented. Website button opens https://www.jawlahre.sa.
+
+## Android-only GitHub build
+1. Open GitHub **Actions > Build Jawlah Android APK**.
+2. Open the latest successful workflow run for the most recent commit.
+3. Open **Artifacts > jawlah-luxury-android-apk** and download the ZIP.
+4. Extract ZIP on Android and install `app-debug.apk`.
+5. If Android reports a signing conflict, back up any data you need, uninstall the previous Jawlah debug app on your own Android device and install the new APK. Installing a debug APK is for testing only.
+
+## Enable actual Supabase Auth
+Create a Supabase project and enable the desired methods under Authentication.
+- On GitHub repository, **Settings > Secrets and variables > Actions**, define `SUPABASE_URL` and `SUPABASE_ANON_KEY` with the public URL and publishable/anon key.
+- Do **not** use the service_role or secret key in the mobile application.
+- For phone OTP, enable Phone authentication and configure a real SMS sender in Supabase. It is not enabled merely by creating a UI.
+- Rerun workflow manually after setting secrets.
+- Email login and registration use Supabase HTTPS Auth endpoints. Sessions are kept in memory for this demo and are not persisted securely yet.
+
+For store distribution, use a stable signing key, add secure auth session management, replace the placeholder listings with verified company content, and complete QA and legal/privacy review.
