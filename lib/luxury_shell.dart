@@ -111,11 +111,38 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
   final Set<String> saved = {}, compared = {};
   final List<String> viewed = [], viewings = [];
   List<HomeInfo> places = [];
+  Map<String, dynamic> appSettings = {};
+  List<Map<String, dynamic>> homeBlocks = [];
   bool isCatalogLoading = true;
   String? catalogError;
   DateTime? lastCatalogRefresh;
   int tab = 0, maximum = 0, minBeds = 0, minArea = 0;
   String city = 'الكل', category = 'الكل', sort = 'المميزة';
+  String setting(String key, String fallback) {
+    final value = appSettings[key];
+    return value is String && value.trim().isNotEmpty ? value : fallback;
+  }
+  bool enabled(String key) {
+    final value = appSettings[key];
+    return value is bool ? value : true;
+  }
+  HomeInfo? get heroProperty {
+    final id = appSettings['hero_project_id']?.toString();
+    for (final home in places) {
+      if (id != null && home.id == id) return home;
+    }
+    return places.firstOrNull;
+  }
+  List<String> get types {
+    final items = places.map((home) => home.type).where((type) => type.isNotEmpty).toSet().toList();
+    items.sort();
+    return items;
+  }
+  List<String> get cities {
+    final items = places.map((home) => home.city).where((city) => city.isNotEmpty).toSet().toList();
+    items.sort();
+    return items;
+  }
 
   @override
   void initState() {
@@ -167,6 +194,14 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         places = updated;
+        final settingsData = decoded['settings'];
+        appSettings = settingsData is Map<String, dynamic>
+          ? settingsData : <String, dynamic>{};
+        final sectionsData = decoded['home_blocks'];
+        homeBlocks = sectionsData is List
+          ? sectionsData.whereType<Map<String, dynamic>>().toList()
+          : <Map<String, dynamic>>[];
+        if (!enabled('show_comparison') && tab == 2) tab = 0;
         isCatalogLoading = false;
         catalogError = null;
       });
@@ -403,6 +438,59 @@ class _LuxuryShellState extends State<LuxuryShell> with WidgetsBindingObserver {
               ])),
             const Icon(Icons.chevron_left, color: uiGold),
           ]))));
+  Widget customSection(Map<String, dynamic> block) {
+    final title = (block['title'] ?? '').toString();
+    final subtitle = (block['subtitle'] ?? '').toString();
+    final buttonText = (block['button_text'] ?? 'شاهد التفاصيل').toString();
+    final linkedId = block['property_id']?.toString();
+    final linked = places.where((p) => p.id == linkedId).firstOrNull;
+    final photo = linked?.photo ?? '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(color: uiPanel,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: uiGoldDim)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: linked != null ? () => see(linked) : () => goBrowse(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (photo.isNotEmpty) SizedBox(height: 150,
+            width: double.infinity, child: propertyPicture(photo)),
+          Padding(padding: const EdgeInsets.all(15),
+            child: Row(children: [
+              if (photo.isEmpty) ...[
+                const Icon(Icons.auto_awesome_outlined, color: uiGold, size: 28),
+                const SizedBox(width: 13),
+              ],
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w900)),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(subtitle, style: const TextStyle(
+                      fontSize: 12, color: uiMuted, height: 1.6)),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(buttonText + ' ←', style: const TextStyle(
+                    color: uiGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                ])),
+            ])),
+        ])));
+  }
+  Future<void> contactCompany(String source) async {
+    final number = setting(source, '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (number.isEmpty) {
+      toast('رقم تواصل الشركة لم تتم إضافته بعد.');
+      return;
+    }
+    final url = Uri.parse(source == 'contact_whatsapp'
+      ? 'https://wa.me/$number' : 'tel:+$number');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      toast('تعذّر فتح وسيلة التواصل.');
+    }
+  }
+
   Widget home() => ListView(
     key: const PageStorageKey('v4-home'),
     padding: const EdgeInsets.fromLTRB(15, 9, 15, 30), children: [
