@@ -32,3 +32,13 @@ Properties, images, places and prices are illustrative—not confirmed Jawlah of
 ## v0.4.0 responsive redesign (demo)
 
 Main browsing experience is now in `lib/luxury_shell.dart`: polished black/gold home, responsive listing cards, category exploration, live search, advanced city/type/price/area/bedroom filters, sortable results, save favorites, three-property comparison, viewed history, mathematical payment calculator, local draft viewing calendar, local owner preview, and official website handoff. All property content remains demo-only. Draft viewings are saved to the Android device; they are **not** submitted to the real estate company. Phone authentication continues to require a configured Supabase project and SMS provider.
+
+## v0.5.0 — Live admin catalog sync
+- Published property data loads from `https://jawlah-real-estate-5sz9.hatchable.site/api/catalog`.
+- Prices, categories, rooms, area, real images, full photo galleries and descriptions are supplied by the owner-controlled admin dashboard.
+- Draft and archived property records remain private. CRM and financial data NEVER appear in the public catalog.
+- Refresh on opening app, resuming from background, switching to Home/Search, and tapping Refresh. Graceful empty and network-error states.
+- Real-time edits do NOT require a new APK release once the API can be reached.
+- **Important:** The Hatchable project currently has personal/private visibility, which blocks anonymous mobile users before the public catalog route runs. The owner must go to Hatchable project Settings and set visibility to Public. The dashboard's HTML page remains protected by `pages/index.js: access='admin'`; all `/api/admin/*` routes remain `access='admin'`.
+- In the admin panel, property status **جاهز للعرض** is required for appearance in the APK. Images have a stable gated /api/catalog-image/:id redirect that checks the property's published state before serving.
+- Requests/appointments still save locally on-device; backend CRM integration is a separate future feature.
