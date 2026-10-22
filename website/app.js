@@ -180,10 +180,22 @@ const password = document.getElementById('password');
           document.getElementById('login-logo').src = data.logo_url;
           document.querySelector('.nav-logo').src = data.logo_url;
         }
-        if (data.home_hero_url && !window.currentType) document.querySelector('.home-hero').style.backgroundImage = `url("${data.home_hero_url}")`;
+        if (data.home_hero_url && !window.currentType) setHeroMedia(data.home_hero_url);
         renderCustomNavigation(data.nav_links || []);
       } catch (error) { console.error('تعذر تحميل إعدادات الموقع:', error); }
       renderContactLinks();
+    }
+    function isHeroVideo(url) { return /\.(mp4|webm)(?:[?#].*)?$/i.test(String(url || '')); }
+    function setHeroMedia(url) {
+      const hero = document.querySelector('.home-hero');
+      const video = document.getElementById('home-hero-video');
+      const mediaUrl = url || 'assets/home-hero-v3.webp';
+      if (isHeroVideo(mediaUrl)) {
+        hero.style.backgroundImage = 'none'; video.src = mediaUrl; video.hidden = false; video.load(); video.play().catch(() => {});
+      } else {
+        video.pause(); video.removeAttribute('src'); video.load(); video.hidden = true;
+        hero.style.backgroundImage = `url("${String(mediaUrl).replace(/"/g, '%22')}")`;
+      }
     }
     function renderCustomNavigation(items) {
       const holder = document.getElementById('custom-nav-links');
@@ -309,7 +321,6 @@ const password = document.getElementById('password');
       renderMapResults();
     }
     function updateCategoryExperience(type) {
-      const hero = document.querySelector('.home-hero');
       const title = document.getElementById('hero-title');
       const subtitle = document.getElementById('hero-subtitle');
       const category = {
@@ -321,7 +332,7 @@ const password = document.getElementById('password');
       if (!category) return;
       title.innerHTML = category.title;
       subtitle.textContent = category.subtitle;
-      hero.style.backgroundImage = `url('${category.image}')`;
+      setHeroMedia(category.image);
     }
     function propertyDetailMarkup(item) {
       const specs = [
