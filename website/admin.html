@@ -84,8 +84,8 @@
           <form id="settings-form" class="settings-form">
             <section class="settings-card"><h3>الشعار وغلاف الصفحة</h3><div class="settings-grid">
               <div class="form-field"><label for="site-logo-file">شعار الموقع</label><input id="site-logo-file" type="file" accept="image/png,image/jpeg,image/webp"><div class="settings-preview logo-preview"><img id="site-logo-preview" src="assets/jawlah-logo.png" alt="معاينة الشعار"></div></div>
-              <div class="form-field"><label for="site-hero-file">غلاف الصفحة الرئيسية</label><input id="site-hero-file" type="file" accept="image/png,image/jpeg,image/webp"><div class="settings-preview hero-preview"><img id="site-hero-preview" src="assets/home-hero-v3.webp" alt="معاينة الغلاف"></div></div>
-            </div><p class="settings-help">يفضل استخدام صورة واضحة بصيغة JPG أو PNG أو WebP، بحجم أقل من 10 ميجابايت.</p></section>
+              <div class="form-field"><label for="site-hero-file">غلاف الصفحة الرئيسية</label><input id="site-hero-file" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"><div class="settings-preview hero-preview"><img id="site-hero-preview" src="assets/home-hero-v3.webp" alt="معاينة صورة الغلاف"><video id="site-hero-video-preview" controls muted playsinline hidden aria-label="معاينة فيديو الغلاف"></video></div></div>
+            </div><p class="settings-help">اختر صورة JPG أو PNG أو WebP، أو فيديو MP4 أو WebM بحجم أقل من 10 ميجابايت. الفيديو يعمل تلقائيًا بصمت كغلاف.</p></section>
             <section class="settings-card"><h3>القائمة العلوية</h3><p class="settings-help">أضف روابط تظهر بجوار «الرئيسية» و«الخريطة». اكتب رابطًا يبدأ بـ https:// أو مسارًا مثل about.html.</p><div id="nav-link-rows" class="nav-link-rows"></div><button id="add-nav-link" class="btn btn-quiet" type="button">＋ إضافة رابط</button></section>
             <section class="settings-card"><h3>التواصل والشبكات الاجتماعية</h3><div class="settings-grid">
               <div class="form-field"><label for="contact-phone">رقم التواصل</label><input id="contact-phone" type="tel" dir="ltr" placeholder="+966 5X XXX XXXX"></div>
@@ -129,6 +129,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="admin.js"></script>
+  <script src="admin.js?v=20261022-hero-video"></script>
 </body>
 </html>
