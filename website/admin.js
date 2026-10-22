@@ -49,10 +49,6 @@
     dashboardPanel.hidden = screen !== 'dashboard';
   }
 
-  function statusLabel(status) {
-    return status === 'published' ? ['منشور','status-published'] : status === 'archived' ? ['مؤرشف','status-archived'] : ['مسودة','status-draft'];
-  }
-
   function renderRows() {
     const q = document.getElementById('search-input').value.trim().toLowerCase();
     const status = document.getElementById('status-filter').value;
@@ -63,16 +59,14 @@
     });
     const body = document.getElementById('properties-body');
     body.innerHTML = filtered.map(row => {
-      const [label, cls] = statusLabel(row.status);
       const img = row.cover_image_url || row.gallery_urls?.[0] || 'assets/villa-malka-v3.webp';
       return `<tr>
         <td data-label="العقار"><div class="property-cell"><img src="${esc(img)}" alt=""><div><strong>${esc(row.title)}</strong><small>${esc(row.deal_type || 'للبيع')}</small></div></div></td>
+        <td data-label="الإجراءات"><div class="row-actions"><button class="icon-action" type="button" data-edit="${esc(row.id)}">تعديل</button><button class="icon-action delete" type="button" data-delete="${esc(row.id)}">حذف</button></div></td>
         <td data-label="النوع">${esc(row.property_type)}</td>
         <td data-label="الموقع">${esc(row.district ? `${row.district}، ${row.city}` : row.city)}</td>
         <td data-label="السعر" class="price-cell">${price(row.price_sar)}</td>
         <td data-label="الوحدات">${number(row.available_units)}</td>
-        <td data-label="الحالة"><span class="status-pill ${cls}">${label}</span></td>
-        <td data-label="الإجراءات"><div class="row-actions"><button class="icon-action" type="button" data-edit="${esc(row.id)}">تعديل</button><button class="icon-action delete" type="button" data-delete="${esc(row.id)}">حذف</button></div></td>
       </tr>`;
     }).join('');
     document.getElementById('property-count').textContent = `عرض ${number(filtered.length)} من ${number(currentRows.length)} عقار`;
@@ -291,8 +285,8 @@
       const id = document.getElementById('property-id').value || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
       const prior = currentRows.find(row => row.id === id);
       const uploaded = await uploadImages([...document.getElementById('photos').files], id);
-      const priorImages = Array.isArray(prior?.gallery_urls) ? prior.gallery_urls : [];
-      const images = [...priorImages, ...uploaded];
+      const priorImages = [...new Set([prior?.cover_image_url, ...(Array.isArray(prior?.gallery_urls) ? prior.gallery_urls : [])].filter(Boolean))];
+      const images = uploaded.length ? [...uploaded, ...priorImages] : priorImages;
       const payload = {
         id,
         title: document.getElementById('title').value.trim(),
@@ -307,7 +301,7 @@
         bedrooms: document.getElementById('bedrooms').value ? Number(document.getElementById('bedrooms').value) : null,
         bathrooms: document.getElementById('bathrooms').value ? Number(document.getElementById('bathrooms').value) : null,
         description: document.getElementById('description').value.trim(),
-        cover_image_url: images[0] || prior?.cover_image_url || null,
+        cover_image_url: uploaded[0] || prior?.cover_image_url || images[0] || null,
         gallery_urls: images,
         status: document.getElementById('status').value
       };
