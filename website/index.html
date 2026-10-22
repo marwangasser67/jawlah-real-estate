@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9f6">
   <title>تسجيل الدخول | جولة العقارية</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261022-hero-video">
 </head>
 <body>
   <main class="page" id="login-screen">
@@ -61,6 +61,7 @@
     </header>
     <section class="view active" id="home-view" aria-label="الرئيسية">
       <div class="home-hero">
+        <video id="home-hero-video" class="home-hero-video" muted autoplay loop playsinline hidden aria-hidden="true" poster="assets/home-hero-v3.webp"></video>
         <div class="hero-copy"><h2 id="hero-title">مستقبل مجتمعات<br>أجمل في المملكة</h2><p id="hero-subtitle">اكتشف نخبة من العقارات في أرقى أحياء المملكة</p></div>
         <div class="searchbar" aria-label="البحث عن عقار">
           <select class="home-type" aria-label="نوع العقار"><option value="all">نوع العقار — الكل</option><option>شقة</option><option>فيلا</option><option>أرض</option></select>
@@ -132,5 +133,5 @@
   <div class="notice" id="notice" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=20261022-2"></script></body>
+  <script src="app.js?v=20261022-4"></script></body>
 </html>
