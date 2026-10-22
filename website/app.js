@@ -202,6 +202,11 @@ const password = document.getElementById('password');
 
     async function loadPublishedProperties() {
       if (!jawlahDb) return;
+      // Use saved database records as the only source when Supabase is configured.
+      // This prevents old demo cards and photos from reappearing after a refresh.
+      properties = [];
+      listingSource = 'live';
+      selectedProperty = null;
       try {
         const { data, error } = await jawlahDb
           .from('properties')
@@ -239,6 +244,10 @@ const password = document.getElementById('password');
         renderProperties();
       } catch (error) {
         console.error('تعذر تحميل عقارات Supabase:', error);
+        properties = [];
+        listingSource = 'live';
+        selectedProperty = null;
+        document.querySelector('.sample-note').textContent = 'تعذر تحميل العقارات';
         showNotice('تعذر تحميل العقارات من قاعدة البيانات؛ تحقق من إعداد Supabase.');
       }
     }
