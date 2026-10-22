@@ -144,12 +144,24 @@
     document.getElementById('nav-link-rows').appendChild(row);
   }
 
+  function isVideoHeroUrl(value) { return /\.(mp4|webm)(?:[?#].*)?$/i.test(String(value || '')); }
+
+  function renderHeroPreview(url, isVideo = isVideoHeroUrl(url)) {
+    const image = document.getElementById('site-hero-preview');
+    const video = document.getElementById('site-hero-video-preview');
+    if (isVideo) {
+      image.hidden = true; video.hidden = false; video.src = url; video.load();
+    } else {
+      video.pause(); video.removeAttribute('src'); video.load(); video.hidden = true; image.hidden = false; image.src = url;
+    }
+  }
+
   async function loadSettings() {
     const { data, error } = await client.from('site_settings').select('*').eq('id', 1).maybeSingle();
     if (error) throw error;
     currentSettings = data || { logo_url: '', home_hero_url: '', contact_phone: '', social_links: {}, nav_links: [] };
     document.getElementById('site-logo-preview').src = currentSettings.logo_url || 'assets/jawlah-logo.png';
-    document.getElementById('site-hero-preview').src = currentSettings.home_hero_url || 'assets/home-hero-v3.webp';
+    renderHeroPreview(currentSettings.home_hero_url || 'assets/home-hero-v3.webp');
     document.getElementById('contact-phone').value = currentSettings.contact_phone || '';
     const social = currentSettings.social_links || {};
     for (const key of ['whatsapp','instagram','x','snapchat','facebook']) document.getElementById(`social-${key}`).value = social[key] || '';
@@ -161,8 +173,9 @@
 
   async function uploadSiteAsset(file, kind) {
     if (!file) return null;
-    if (!['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('ارفع صورة PNG أو JPG أو WebP.');
-    if (file.size > 10 * 1024 * 1024) throw new Error('حجم الصورة يجب أن يكون أقل من 10 ميجابايت.');
+    const allowedTypes = kind === 'hero' ? ['image/png','image/jpeg','image/webp','video/mp4','video/webm'] : ['image/png','image/jpeg','image/webp'];
+    if (!allowedTypes.includes(file.type)) throw new Error(kind === 'hero' ? 'ارفع صورة PNG أو JPG أو WebP، أو فيديو MP4 أو WebM.' : 'ارفع صورة PNG أو JPG أو WebP.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('حجم الملف يجب أن يكون أقل من 10 ميجابايت.');
     const extension = file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
     const path = `${kind}/${crypto.randomUUID ? crypto.randomUUID() : Date.now()}.${extension}`;
     const { error } = await client.storage.from('site-assets').upload(path, file, { upsert: false, contentType: file.type });
@@ -190,7 +203,8 @@
       })).filter(item => item.label && item.url);
       if ([...document.querySelectorAll('.nav-link-row')].some(row => Boolean(row.querySelector('.nav-label-input').value.trim()) !== Boolean(row.querySelector('.nav-url-input').value.trim()))) throw new Error('أكمل اسم ورابط كل عنصر في القائمة أو احذف السطر الفارغ.');
       const logo = await uploadSiteAsset(document.getElementById('site-logo-file').files[0], 'logo');
-      const hero = await uploadSiteAsset(document.getElementById('site-hero-file').files[0], 'hero');
+      const heroFile = document.getElementById('site-hero-file').files[0];
+      const hero = await uploadSiteAsset(heroFile, 'hero');
       const social = {};
       for (const key of ['whatsapp','instagram','x','snapchat','facebook']) {
         const value = document.getElementById(`social-${key}`).value.trim();
@@ -203,6 +217,7 @@
       document.getElementById('site-logo-file').value = '';
       document.getElementById('site-hero-file').value = '';
       document.getElementById('admin-logo').src = payload.logo_url || 'assets/jawlah-logo.png';
+      renderHeroPreview(payload.home_hero_url || 'assets/home-hero-v3.webp');
       notify('تم حفظ إعدادات الموقع. حدّث صفحة الموقع لمشاهدة التغييرات.');
     } catch (error) { showError(errorBox, error.message || 'تعذر حفظ الإعدادات.'); }
     finally { button.disabled = false; button.textContent = 'حفظ إعدادات الموقع'; }
@@ -373,7 +388,7 @@
   document.getElementById('add-nav-link').addEventListener('click', () => addNavRow());
   document.getElementById('settings-form').addEventListener('submit', saveSiteSettings);
   document.getElementById('site-logo-file').addEventListener('change', event => { const file=event.target.files[0]; if(file)document.getElementById('site-logo-preview').src=URL.createObjectURL(file); });
-  document.getElementById('site-hero-file').addEventListener('change', event => { const file=event.target.files[0]; if(file)document.getElementById('site-hero-preview').src=URL.createObjectURL(file); });
+  document.getElementById('site-hero-file').addEventListener('change', event => { const file=event.target.files[0]; if(file)renderHeroPreview(URL.createObjectURL(file),file.type.startsWith('video/')); });
   document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
   document.getElementById('cancel-dialog').addEventListener('click', () => dialog.close());
   propertyForm.addEventListener('submit', saveProperty);
