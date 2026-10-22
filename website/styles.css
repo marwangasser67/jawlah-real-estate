@@ -223,11 +223,13 @@
     .view { display: none; }
     .view.active { display: block; }
     .home-hero { position: relative; min-height: clamp(390px, 35vw, 520px); display: flex; align-items: center; padding: 30px 5.4% 97px; background: #514c40 url('assets/home-hero-v3.webp') center center/cover no-repeat; overflow: visible; }
-    .home-hero::before { content:""; position:absolute; inset:0; background:linear-gradient(270deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.54) 38%,rgba(12,15,15,.04) 72%); }
-    .hero-copy { position: relative; z-index: 1; max-width: 560px; margin-inline-start: 0; margin-inline-end: auto; text-align: right; }
+    .home-hero-video { position:absolute; z-index:0; inset:0; width:100%; height:100%; object-fit:cover; }
+    .home-hero-video[hidden] { display:none; }
+    .home-hero::before { content:""; position:absolute; z-index:1; inset:0; background:linear-gradient(270deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.54) 38%,rgba(12,15,15,.04) 72%); }
+    .hero-copy { position: relative; z-index: 2; max-width: 560px; margin-inline-start: 0; margin-inline-end: auto; text-align: right; }
     .hero-copy h2 { margin:0 0 9px; font-size:clamp(30px,3vw,46px); line-height:1.35; font-weight:700; color:#222629; }
     .hero-copy p { margin:0; color:#55595b; font-size:17px; }
-    .searchbar { position:absolute; z-index:2; bottom:26px; inset-inline:5%; min-height:70px; padding:8px; display:flex; align-items:center; gap:4px; background:#fff; border:1px solid #ebe8e3; border-radius:12px; box-shadow:0 8px 22px #27231a26; }
+    .searchbar { position:absolute; z-index:3; bottom:26px; inset-inline:5%; min-height:70px; padding:8px; display:flex; align-items:center; gap:4px; background:#fff; border:1px solid #ebe8e3; border-radius:12px; box-shadow:0 8px 22px #27231a26; }
     .searchbar select { flex:1; min-width:0; height:48px; padding:0 14px; border:0; border-inline-start:1px solid #e8e5df; background:#fff; color:#292c2e; font:600 14px var(--arabic); outline-color:#b08b51; }
     .search-btn { height:48px; min-width:138px; border:0; border-radius:8px; background:#b08b51; color:white; font:600 16px var(--arabic); cursor:pointer; }
     .section-wrap { max-width:1500px; margin:auto; padding:26px 3.2% 50px; }
