@@ -160,6 +160,15 @@ const password = document.getElementById('password');
       ? window.supabase.createClient(window.JAWLAH_SUPABASE_URL, window.JAWLAH_SUPABASE_PUBLISHABLE_KEY)
       : null;
 
+    // Do not render the hard-coded demo catalogue when this site has a live database.
+    // Published Supabase rows are loaded after a customer session is restored.
+    if (jawlahDb) {
+      properties = [];
+      selectedProperty = null;
+      listingSource = 'live';
+      document.querySelector('.sample-note').textContent = 'جارٍ تحميل العقارات...';
+    }
+
     async function loadSiteSettings() {
       if (!jawlahDb) return;
       try {
